@@ -15,10 +15,8 @@ const DevicesScreen = () => {
   const [search, setSearch] = useState('');
   const [filteredDevices, setFilteredDevices] = useState([]);
   const [userType, setUserType] = useState(null);
-  const [labFilter, setLabFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
-  const [labs, setLabs] = useState([]);
   const [types, setTypes] = useState([]);
 
   // Fetch devices from API
@@ -56,32 +54,24 @@ const DevicesScreen = () => {
   }, []);
 
   useEffect(() => {
-    // Fetch labs and types for filter dropdowns
-    const fetchLabsAndTypes = async () => {
+    // Fetch types for filter dropdown
+    const fetchTypes = async () => {
       try {
         const token = await AsyncStorage.getItem('token');
-        const [labsRes, typesRes] = await Promise.all([
-          axios.get(`${API_URL}/labs`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
-          axios.get(`${API_URL}/device-types`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-        ]);
-        setLabs(labsRes.data.data.labs || []);
+        const typesRes = await axios.get(`${API_URL}/device-types`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
         setTypes(typesRes.data.data.types || []);
       } catch (e) {
-        setLabs([]);
         setTypes([]);
       }
     };
-    fetchLabsAndTypes();
+    fetchTypes();
   }, []);
 
   useEffect(() => {
-    // Filter devices by search, lab, status, and type
+    // Filter devices by search, status, and type
     let filtered = devices;
     if (search) {
       filtered = filtered.filter(device => device.name.toLowerCase().includes(search.toLowerCase()));
-    }
-    if (labFilter) {
-      filtered = filtered.filter(device => device.lab_id === labFilter);
     }
     if (statusFilter) {
       filtered = filtered.filter(device => device.status === statusFilter);
@@ -90,7 +80,7 @@ const DevicesScreen = () => {
       filtered = filtered.filter(device => device.type === typeFilter);
     }
     setFilteredDevices(filtered);
-  }, [search, devices, labFilter, statusFilter, typeFilter]);
+  }, [search, devices, statusFilter, typeFilter]);
 
   // Status color helper
   const getStatusColor = (status) => {
@@ -103,18 +93,6 @@ const DevicesScreen = () => {
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Devices</Text>
       <View style={styles.filterRow}>
-        <View style={styles.filterCol}>
-          <Picker
-            selectedValue={labFilter}
-            onValueChange={setLabFilter}
-            style={styles.picker}
-          >
-            <Picker.Item label="All Labs" value="" />
-            {labs.map(lab => (
-              <Picker.Item key={lab.id} label={lab.name} value={lab.id} />
-            ))}
-          </Picker>
-        </View>
         <View style={styles.filterCol}>
           <Picker
             selectedValue={statusFilter}
@@ -138,7 +116,7 @@ const DevicesScreen = () => {
             ))}
           </Picker>
         </View>
-        <Button title="Clear" onPress={() => { setLabFilter(''); setStatusFilter(''); setTypeFilter(''); }} />
+        <Button title="Clear" onPress={() => { setStatusFilter(''); setTypeFilter(''); }} />
       </View>
       <TextInput
         style={styles.searchInput}
@@ -234,42 +212,3 @@ const styles = StyleSheet.create({
 });
 
 export default DevicesScreen;
-// Inline comments: API endpoint usage and migration logic are clarified above.
-<View style={styles.filterRow}>
-  <View style={styles.filterCol}>
-    <Picker
-      selectedValue={labFilter}
-      onValueChange={setLabFilter}
-      style={styles.picker}
-    >
-      <Picker.Item label="All Labs" value="" />
-      {labs.map(lab => (
-        <Picker.Item key={lab.id} label={lab.name} value={lab.id} />
-      ))}
-    </Picker>
-  </View>
-  <View style={styles.filterCol}>
-    <Picker
-      selectedValue={statusFilter}
-      onValueChange={setStatusFilter}
-      style={styles.picker}
-    >
-      <Picker.Item label="All Statuses" value="" />
-      <Picker.Item label="Active" value="Active" />
-      <Picker.Item label="Inactive" value="Inactive" />
-    </Picker>
-  </View>
-  <View style={styles.filterCol}>
-    <Picker
-      selectedValue={typeFilter}
-      onValueChange={setTypeFilter}
-      style={styles.picker}
-    >
-      <Picker.Item label="All Types" value="" />
-      {types.map(type => (
-        <Picker.Item key={type.id} label={type.name} value={type.name} />
-      ))}
-    </Picker>
-  </View>
-  <Button title="Clear" onPress={() => { setLabFilter(''); setStatusFilter(''); setTypeFilter(''); }} />
-</View>
