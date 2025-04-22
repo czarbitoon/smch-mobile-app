@@ -1,27 +1,32 @@
 import React from 'react';
-import { View, Text, StyleSheet, Button, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, Button, Alert, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 
 const ReportsScreen = () => {
   const router = useRouter();
-
   // Placeholder for reports list; replace with API data
   const reports = [
     { id: 1, title: 'Report 1', status: 'Open' },
     { id: 2, title: 'Report 2', status: 'Resolved' },
   ];
-
+  const renderReportItem = ({ item: report }) => (
+    <View style={styles.reportCard}>
+      <Text style={styles.reportTitle}>{report.title}</Text>
+      <Text style={styles.reportStatus}>{report.status}</Text>
+      <Button title="View Details" onPress={() => Alert.alert('Report Details', `Title: ${report.title}\nStatus: ${report.status}`)} />
+    </View>
+  );
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <View style={styles.container}>
       <Text style={styles.title}>Reports</Text>
-      {reports.map(report => (
-        <View key={report.id} style={styles.reportCard}>
-          <Text style={styles.reportTitle}>{report.title}</Text>
-          <Text style={styles.reportStatus}>{report.status}</Text>
-        </View>
-      ))}
-      <Button title="Add Report" onPress={() => Alert.alert('Add Report', 'Feature coming soon!')} />
-    </ScrollView>
+      <FlatList
+        data={reports}
+        keyExtractor={item => item.id?.toString() || Math.random().toString()}
+        renderItem={renderReportItem}
+        contentContainerStyle={{ paddingBottom: 32 }}
+      />
+      <Button title="Add Report" onPress={() => router.push('/(tabs)/reportCreate')} />
+    </View>
   );
 };
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Button, ScrollView, Alert, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Button, ScrollView, Alert, TextInput, ActivityIndicator, Image, FlatList } from 'react-native';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -89,6 +89,19 @@ const DevicesScreen = () => {
     return '#888';
   };
 
+  const renderDeviceItem = ({ item: device }) => (
+    <View style={styles.deviceCard}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+        <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: getStatusColor(device.status), marginRight: 8 }} />
+        <Text style={styles.deviceName}>{device.name}</Text>
+      </View>
+      {/* Device image if available */}
+      {device.image_url && (
+        <Image source={{ uri: device.image_url }} style={styles.deviceImage} resizeMode="cover" />
+      )}
+      <Text style={styles.deviceStatus}>{device.status}</Text>
+    </View>
+  );
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Devices</Text>
@@ -129,15 +142,14 @@ const DevicesScreen = () => {
       {!loading && filteredDevices.length === 0 && (
         <Text style={styles.empty}>No devices found.</Text>
       )}
-      {!loading && filteredDevices.map(device => (
-        <View key={device.id} style={styles.deviceCard}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
-            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: getStatusColor(device.status), marginRight: 8 }} />
-            <Text style={styles.deviceName}>{device.name}</Text>
-          </View>
-          <Text style={styles.deviceStatus}>{device.status}</Text>
-        </View>
-      ))}
+      {!loading && (
+        <FlatList
+          data={filteredDevices}
+          keyExtractor={item => item.id?.toString() || Math.random().toString()}
+          renderItem={renderDeviceItem}
+          contentContainerStyle={{ paddingBottom: 32 }}
+        />
+      )}
       {userType === 2 && (
         <Button title="Add Device" onPress={() => Alert.alert('Add Device', 'Feature coming soon!')} />
       )}
@@ -174,6 +186,14 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
     alignItems: 'flex-start',
+  },
+  deviceImage: {
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
+    marginTop: 8,
+    marginBottom: 8,
+    backgroundColor: '#e0e0e0',
   },
   deviceName: {
     fontSize: 18,
