@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://api:8000/api';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 const DevicesScreen = () => {
   const router = useRouter();

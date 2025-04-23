@@ -44,7 +44,7 @@
       "eas": {
         "projectId": "d5d8f79f-26ea-4733-b0db-7f08a19c0904"
       },
-      "API_URL": "http://api:8000/api"
+      "API_URL": "http://localhost:8000/api"
     },
     "owner": "czarbitoon"
   }

@@ -2,9 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Button, Alert } from 'react-native';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
-import messaging from '@react-native-firebase/messaging';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://api:8000/api';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 const NotificationsScreen = () => {
   const [notifications, setNotifications] = useState([]);
@@ -13,19 +12,7 @@ const NotificationsScreen = () => {
   const router = useRouter();
 
   useEffect(() => {
-    // Request permission and get FCM token
-    const setupFCM = async () => {
-      await messaging().requestPermission();
-      const token = await messaging().getToken();
-      // Optionally send token to backend
-    };
-    setupFCM();
-    // Listen for foreground messages
-    const unsubscribe = messaging().onMessage(async remoteMessage => {
-      Alert.alert('New Notification', remoteMessage.notification?.title || '');
-      fetchNotifications();
-    });
-    return unsubscribe;
+    fetchNotifications();
   }, []);
 
   const fetchNotifications = async () => {
