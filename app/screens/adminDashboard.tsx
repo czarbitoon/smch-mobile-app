@@ -27,9 +27,15 @@ const AdminDashboard = () => {
         <Text style={styles.profileEmail}>{user.email}</Text>
       </View>
       <View style={styles.menuSection}>
-        <Button title="Devices" onPress={() => router.push('/(tabs)/devices')} />
-        <Button title="Offices" onPress={() => router.push('/(tabs)/offices')} />
-        <Button title="Reports" onPress={() => router.push('/(tabs)/reports')} />
+        <TouchableOpacity style={styles.menuButton} onPress={() => router.push('/(tabs)/devices')}>
+          <Text style={styles.menuButtonText}>Devices</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.menuButton} onPress={() => router.push('/(tabs)/offices')}>
+          <Text style={styles.menuButtonText}>Offices</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.menuButton} onPress={() => router.push('/(tabs)/reports')}>
+          <Text style={styles.menuButtonText}>Reports</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -90,6 +96,28 @@ const styles = StyleSheet.create({
   menuSection: {
     width: '100%',
     gap: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 12,
+  },
+  menuButton: {
+    flex: 1,
+    backgroundColor: '#1976d2',
+    paddingVertical: 18,
+    marginHorizontal: 6,
+    borderRadius: 12,
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#1976d2',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
+  menuButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 18,
+    letterSpacing: 1,
   },
 });
 

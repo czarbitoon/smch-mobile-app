@@ -3,10 +3,10 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Button } from 're
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const StaffDashboard = () => {
+const UserDashboard = () => {
   const router = useRouter();
   // Placeholder user data; replace with context/provider logic
-  const user = { name: 'Staff', email: 'staff@example.com' };
+  const user = { name: 'User', email: 'user@example.com' };
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem('token');
@@ -16,7 +16,7 @@ const StaffDashboard = () => {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Staff Dashboard</Text>
+        <Text style={styles.title}>User Dashboard</Text>
         <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
@@ -27,8 +27,15 @@ const StaffDashboard = () => {
         <Text style={styles.profileEmail}>{user.email}</Text>
       </View>
       <View style={styles.menuSection}>
-        <Button title="Devices" onPress={() => router.push('/(tabs)/devices')} />
-        <Button title="Reports" onPress={() => router.push('/(tabs)/reports')} />
+        <TouchableOpacity style={styles.menuButton} onPress={() => router.push('/(tabs)/devices')}>
+          <Text style={styles.menuButtonText}>Devices</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.menuButton} onPress={() => router.push('/(tabs)/reports')}>
+          <Text style={styles.menuButtonText}>Reports</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.menuButton} onPress={() => router.push('/(tabs)/profile')}>
+          <Text style={styles.menuButtonText}>Profile</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -89,7 +96,29 @@ const styles = StyleSheet.create({
   menuSection: {
     width: '100%',
     gap: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 12,
+  },
+  menuButton: {
+    flex: 1,
+    backgroundColor: '#1976d2',
+    paddingVertical: 18,
+    marginHorizontal: 6,
+    borderRadius: 12,
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#1976d2',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
+  menuButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 18,
+    letterSpacing: 1,
   },
 });
 
-export default StaffDashboard;
+export default UserDashboard;

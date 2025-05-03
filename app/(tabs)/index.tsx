@@ -1,69 +1,47 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Button, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useEffect } from 'react';
+import { StyleSheet, ActivityIndicator, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [checkingAuth, setCheckingAuth] = useState(true);
-  const [role, setRole] = useState<string | null>(null);
-
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkRoleAndNavigate = async () => {
       const token = await AsyncStorage.getItem('token');
-      if (!token) {
+      const userRole = await AsyncStorage.getItem('user_role');
+      if (!token || !userRole) {
         router.replace('/auth/login');
-      } else {
-        const storedRole = await AsyncStorage.getItem('type');
-        setRole(storedRole);
-        setCheckingAuth(false);
+        return;
+      }
+      switch (userRole) {
+        case 'user':
+          router.replace('/screens/userDashboard');
+          break;
+        case 'staff':
+          router.replace('/screens/staffDashboard');
+          break;
+        case 'admin':
+          router.replace('/screens/adminDashboard');
+          break;
+        default:
+          router.replace('/auth/login');
       }
     };
-    checkAuth();
+    checkRoleAndNavigate();
   }, []);
-
-  if (checkingAuth) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
-    );
-  }
-
-  if (role === 'admin') {
-    return <AdminDashboard />;
-  }
-  if (role === 'staff') {
-    const StaffDashboard = require('./staffDashboard').default;
-    return <StaffDashboard />;
-  }
-  if (role === 'user') {
-    return <UserDashboard />;
-  }
-  // fallback for unknown roles
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Unknown role. Please contact support.</Text>
+    <View style={styles.container}>
+      <ActivityIndicator size="large" color="#1976d2" />
     </View>
   );
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Welcome to SMCH Admin</Text>
-      <View style={styles.menuSection}>
-        <Button title="Devices" onPress={() => router.push('/(tabs)/devices')} />
-        <Button title="Offices" onPress={() => router.push('/(tabs)/offices')} />
-        <Button title="Reports" onPress={() => router.push('/(tabs)/reports')} />
-      </View>
-    </ScrollView>
-  );
 }
-
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     backgroundColor: '#fff',
     padding: 16,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
     fontSize: 28,

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Button, Alert } from 'react-native';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
+import { Swipeable } from 'react-native-gesture-handler';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -19,7 +20,8 @@ const NotificationsScreen = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`${API_URL}/notifications`);
+      const token = await AsyncStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/notifications`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       setNotifications(response.data.data.notifications || []);
     } catch (err) {
       setError('Failed to load notifications');
@@ -43,7 +45,8 @@ const NotificationsScreen = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await axios.delete(`${API_URL}/notifications/clear`);
+              const token = await AsyncStorage.getItem('token');
+              await axios.delete(`${API_URL}/notifications/clear`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
               setNotifications([]);
             } catch {
               Alert.alert('Error', 'Failed to clear notifications');
@@ -63,11 +66,30 @@ const NotificationsScreen = () => {
         <Text style={styles.empty}>No notifications found.</Text>
       )}
       {!loading && notifications.map((notif) => (
-        <View key={notif.id} style={styles.notificationCard}>
-          <Text style={styles.notificationTitle}>{notif.title}</Text>
-          <Text style={styles.notificationBody}>{notif.body}</Text>
-          <Text style={styles.notificationDate}>{notif.created_at}</Text>
-        </View>
+        <Swipeable
+          key={notif.id}
+          renderRightActions={() => (
+            <Button
+              title="Delete"
+              color="#e53935"
+              onPress={async () => {
+                try {
+                  const token = await AsyncStorage.getItem('token');
+                  await axios.delete(`${API_URL}/notifications/${notif.id}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+                  fetchNotifications();
+                } catch {
+                  Alert.alert('Error', 'Failed to delete notification');
+                }
+              }}
+            />
+          )}
+        >
+          <View style={styles.notificationCard}>
+            <Text style={styles.notificationTitle}>{notif.title}</Text>
+            <Text style={styles.notificationBody}>{notif.body}</Text>
+            <Text style={styles.notificationDate}>{notif.created_at}</Text>
+          </View>
+        </Swipeable>
       ))}
       <View style={{ height: 24 }} />
       <Button title="Clear All Notifications" color="#e53935" onPress={handleClearAll} disabled={loading || notifications.length === 0} />
@@ -122,3 +144,12 @@ const styles = StyleSheet.create({
 });
 
 export default NotificationsScreen;
+
+const handleDeleteNotification = async (id) => {
+  try {
+    await axios.delete(`${API_URL}/notifications/${id}`);
+    setNotifications((prev) => prev.filter((notif) => notif.id !== id));
+  } catch {
+    Alert.alert('Error', 'Failed to delete notification');
+  }
+};

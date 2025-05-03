@@ -33,3 +33,6 @@ export const typography = {
   body: 16,
   caption: 12
 };
+
+const theme = { colors, spacing, typography };
+export default theme;
