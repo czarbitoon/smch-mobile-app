@@ -9,11 +9,14 @@ import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const [role, setRole] = useState<number | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [notifCount, setNotifCount] = useState(0);
 
   React.useEffect(() => {
     const getRole = async () => {
@@ -22,6 +25,23 @@ export default function TabLayout() {
       setLoading(false);
     };
     getRole();
+  }, []);
+
+  React.useEffect(() => {
+    const fetchNotifCount = async () => {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
+        const res = await fetch(`${API_URL}/notifications/unread-count`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        const data = await res.json();
+        setNotifCount(data?.data?.unread_count || 0);
+      } catch {
+        setNotifCount(0);
+      }
+    };
+    fetchNotifCount();
   }, []);
 
   if (loading) return null;
@@ -75,8 +95,42 @@ export default function TabLayout() {
           name={screen.name}
           options={{
             title: screen.title,
-            tabBarIcon: ({ color }) => <IconSymbol size={28} name={screen.icon} color={color} />, 
+            tabBarIcon: ({ color, focused }) => {
+              if (screen.name === 'notifications') {
+                return (
+                  <View>
+                    <IconSymbol size={28} name={screen.icon} color={color} />
+                    {notifCount > 0 && (
+                      <View style={{
+                        position: 'absolute',
+                        right: -2,
+                        top: -2,
+                        backgroundColor: 'red',
+                        borderRadius: 8,
+                        minWidth: 16,
+                        height: 16,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        paddingHorizontal: 2,
+                      }}>
+                        <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>{notifCount}</Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              }
+              return <IconSymbol size={28} name={screen.icon} color={color} />;
+            },
+            tabBarTestID: screen.name === 'notifications' ? 'tab-notifications' : undefined,
           }}
+          listeners={screen.name === 'notifications' ? {
+            tabPress: (e) => {
+              e.preventDefault();
+              // Redirect to reports screen instead of notifications
+              const router = require('expo-router').useRouter();
+              router.replace('/(tabs)/reports');
+            },
+          } : undefined}
         />
       ))}
     </Tabs>

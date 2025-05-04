@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Button, ActivityIndicator, FlatList, TextInput,
 import { useRouter } from 'expo-router';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -75,6 +76,9 @@ const OfficesScreen = () => {
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => router.back()} testID="back-btn">
+        <Ionicons name="arrow-back" size={28} color="#1976d2" />
+      </TouchableOpacity>
       <Text style={styles.title}>Offices</Text>
       {loading && <ActivityIndicator size="large" color="#007bff" />}
       {error && <Text style={{ color: 'red', marginBottom: 16 }}>{error}</Text>}

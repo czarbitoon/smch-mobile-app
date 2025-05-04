@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import axios from "axios";
 import { API_URL } from "../constants/theme";
+import { Ionicons } from '@expo/vector-icons';
 
 const ResetPassword = () => {
   const [email, setEmail] = useState("");
@@ -26,6 +27,9 @@ const ResetPassword = () => {
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => navigation?.goBack ? navigation.goBack() : null} testID="back-btn">
+        <Ionicons name="arrow-back" size={28} color="#1976d2" />
+      </TouchableOpacity>
       <Text style={styles.title}>Reset Password</Text>
       {success ? (
         <Text style={styles.success}>A reset link has been sent to your email.</Text>

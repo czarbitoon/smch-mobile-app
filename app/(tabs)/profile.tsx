@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Button } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 const Profile = () => {
   // Placeholder user data; replace with context/provider logic
@@ -41,6 +42,9 @@ const Profile = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => navigation?.goBack ? navigation.goBack() : null} testID="back-btn">
+        <Ionicons name="arrow-back" size={28} color="#1976d2" />
+      </TouchableOpacity>
       <View style={styles.profileCard}>
         <View style={styles.avatar} />
         <Text style={styles.profileName}>{user.name}</Text>

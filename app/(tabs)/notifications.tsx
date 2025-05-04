@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Button, Alert } 
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { Swipeable } from 'react-native-gesture-handler';
+import { Ionicons } from '@expo/vector-icons';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -59,6 +60,9 @@ const NotificationsScreen = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => router.back()} testID="back-btn">
+        <Ionicons name="arrow-back" size={28} color="#1976d2" />
+      </TouchableOpacity>
       <Text style={styles.title}>Notifications</Text>
       {loading && <ActivityIndicator size="large" color="#007bff" />}
       {error && <Text style={styles.error}>{error}</Text>}

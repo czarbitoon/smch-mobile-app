@@ -3,6 +3,7 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, 
 import axios from "axios";
 import { API_URL } from "../constants/theme";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from '@expo/vector-icons';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -85,6 +86,9 @@ const UserManagement = () => {
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => navigation?.goBack ? navigation.goBack() : null} testID="back-btn">
+        <Ionicons name="arrow-back" size={28} color="#1976d2" />
+      </TouchableOpacity>
       <Text style={styles.title}>User Management</Text>
       <FlatList
         data={users}

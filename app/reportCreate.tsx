@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, Image, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
@@ -12,6 +12,7 @@ export default function ReportCreate() {
   const [image, setImage] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [userRole, setUserRole] = useState('');
+  const [priority, setPriority] = useState('Low');
 
   useEffect(() => {
     AsyncStorage.getItem('user_role').then(role => {
@@ -40,26 +41,45 @@ export default function ReportCreate() {
     setUploading(true);
     try {
       const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        Alert.alert('Unauthorized', 'Session expired. Please login again.');
+        setUploading(false);
+        router.replace('/auth/login');
+        return;
+      }
       const formData = new FormData();
+      formData.append('title', `Issue Report - ${deviceName || 'Device'}`);
       formData.append('device_id', deviceId);
       formData.append('description', description);
+      formData.append('priority', priority);
+      formData.append('status', 'pending');
       if (image) {
-        formData.append('image', {
+        formData.append('report_image', {
           uri: image.uri,
           name: image.fileName || 'photo.jpg',
           type: image.type ? image.type : (image.uri && image.uri.endsWith('.png') ? 'image/png' : 'image/jpeg'),
         });
       }
-      await axios.post('http://192.168.1.100/api/reports', formData, {
+      const getApiUrl = () => {
+        if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
+        if (Platform.OS === 'android') return 'http://10.0.2.2/api';
+        if (Platform.OS === 'ios') return 'http://127.0.0.1/api';
+        if (Platform.OS === 'web') return 'http://localhost:8000/api';
+        return 'http://192.168.1.100/api';
+      };
+      console.log('Submitting report:', { deviceId, description, image, priority, api: getApiUrl() });
+      const response = await axios.post(`${getApiUrl()}/reports`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`,
         },
       });
+      console.log('Report submit response:', response.data);
       Alert.alert('Success', 'Report submitted successfully');
       router.replace('/(tabs)/reports');
     } catch (err) {
-      Alert.alert('Error', 'Failed to submit report');
+      console.error('Report submit error:', err, err?.response?.data);
+      Alert.alert('Error', 'Failed to submit report: ' + (err?.response?.data?.message || err.message || 'Unknown error'));
     } finally {
       setUploading(false);
     }
@@ -81,6 +101,26 @@ export default function ReportCreate() {
         numberOfLines={4}
         testID="description-input"
       />
+      <View style={{ marginBottom: 16 }}>
+        <Text style={{ marginBottom: 4 }}>Priority:</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          {['Low','Medium','High','Critical'].map((level) => (
+            <TouchableOpacity
+              key={level}
+              style={{
+                backgroundColor: priority === level ? '#1976d2' : '#e3e3e3',
+                padding: 8,
+                borderRadius: 8,
+                marginRight: 8
+              }}
+              onPress={() => setPriority(level)}
+              testID={`priority-btn-${level}`}
+            >
+              <Text style={{ color: priority === level ? '#fff' : '#333' }}>{level}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
       <TouchableOpacity style={styles.imagePicker} onPress={pickImage} testID="pick-image-btn">
         {image ? (
           <Image source={{ uri: image.uri }} style={styles.imagePreview} />

@@ -4,6 +4,7 @@ import axios from "axios";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { colors, spacing, typography } from "../constants/theme";
+import { Ionicons } from '@expo/vector-icons';
 
 
  axios.interceptors.request.use(async (config) => {
@@ -150,7 +151,10 @@ const LoginScreen = () => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <ScrollView contentContainerStyle={styles.container}>
+      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => router.back()} testID="back-btn">
+        <Ionicons name="arrow-back" size={28} color="#1976d2" />
+      </TouchableOpacity>
       <View style={styles.formBox}>
         <Text style={styles.title}>{isRegistering ? "Register" : "Login"}</Text>
         {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
