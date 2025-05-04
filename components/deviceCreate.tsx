@@ -1,9 +1,9 @@
-// The file now includes dynamic dropdowns for device type, category, subcategory, and office.
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Button, TextInput, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import { Picker } from '@react-native-picker/picker';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -12,17 +12,16 @@ const DeviceCreateScreen = () => {
   const [name, setName] = useState('');
   const [type, setType] = useState('');
   const [officeId, setOfficeId] = useState('');
+  const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [types, setTypes] = useState([]);
-  const [subcategories, setSubcategories] = useState([]);
   const [offices, setOffices] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedType, setSelectedType] = useState('');
-  const [selectedSubcategory, setSelectedSubcategory] = useState('');
 
   const handleSubmit = async () => {
-    if (!name || !type || !officeId) {
+    if (!name || !type || !officeId || !status) {
       Alert.alert('Validation', 'All fields are required.');
       return;
     }
@@ -32,7 +31,8 @@ const DeviceCreateScreen = () => {
       await axios.post(`${API_URL}/devices`, {
         name,
         type,
-        office_id: officeId
+        office_id: officeId,
+        status
       }, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
@@ -40,6 +40,7 @@ const DeviceCreateScreen = () => {
       setName('');
       setType('');
       setOfficeId('');
+      setStatus('');
       router.back();
     } catch (err) {
       Alert.alert('Error', 'Failed to create device.');
@@ -86,21 +87,6 @@ const DeviceCreateScreen = () => {
     setSelectedType('');
   }, [selectedCategory]);
 
-  useEffect(() => {
-    const fetchSubcategories = async () => {
-      if (!selectedCategory) { setSubcategories([]); return; }
-      try {
-        const token = await AsyncStorage.getItem('token');
-        const res = await axios.get(`${API_URL}/device-categories/${selectedCategory}/subcategories`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-        setSubcategories(res.data.data.subcategories || []);
-      } catch (err) {
-        setSubcategories([]);
-      }
-    };
-    fetchSubcategories();
-    setSelectedSubcategory('');
-  }, [selectedCategory]);
-
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Add Device</Text>
@@ -132,17 +118,6 @@ const DeviceCreateScreen = () => {
         ))}
       </Picker>
       <Picker
-        selectedValue={selectedSubcategory}
-        onValueChange={setSelectedSubcategory}
-        style={styles.input}
-        enabled={!!selectedCategory}
-      >
-        <Picker.Item label="Select Subcategory" value="" />
-        {subcategories.map((sub) => (
-          <Picker.Item key={sub.id} label={sub.name} value={sub.id} />
-        ))}
-      </Picker>
-      <Picker
         selectedValue={officeId}
         onValueChange={setOfficeId}
         style={styles.input}
@@ -151,6 +126,17 @@ const DeviceCreateScreen = () => {
         {offices.map((office) => (
           <Picker.Item key={office.id} label={office.name} value={office.id} />
         ))}
+      </Picker>
+      <Picker
+        selectedValue={status}
+        onValueChange={setStatus}
+        style={styles.input}
+      >
+        <Picker.Item label="Select Status" value="" />
+        <Picker.Item label="Resolved" value="resolved" />
+        <Picker.Item label="Pending" value="pending" />
+        <Picker.Item label="Repair" value="repair" />
+        <Picker.Item label="Decommissioned" value="decommissioned" />
       </Picker>
       {loading ? (
         <ActivityIndicator size="large" color="#007bff" />

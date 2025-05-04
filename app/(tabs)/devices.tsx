@@ -22,12 +22,9 @@ const DevicesScreen = () => {
   const [types, setTypes] = useState([]);
   const [offices, setOffices] = useState([]);
   const [selectedOffice, setSelectedOffice] = useState('');
-  const [subcategories, setSubcategories] = useState([]);
-  const [selectedSubcategory, setSelectedSubcategory] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showTypeModal, setShowTypeModal] = useState(false);
-  const [showSubcategoryModal, setShowSubcategoryModal] = useState(false);
   const [showOfficeModal, setShowOfficeModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const pageSize = 9;
@@ -49,7 +46,6 @@ const DevicesScreen = () => {
         const params = {};
         if (selectedCategory) params.device_category_id = selectedCategory;
         if (typeFilter) params.device_type_id = typeFilter;
-        if (selectedSubcategory) params.device_subcategory_id = selectedSubcategory;
         if (selectedOffice) params.office_id = selectedOffice;
         if (statusFilter) params.status = statusFilter;
         params.per_page = 200;
@@ -80,7 +76,7 @@ const DevicesScreen = () => {
       }
     };
     fetchDevices();
-  }, [selectedCategory, typeFilter, selectedSubcategory, selectedOffice, statusFilter]);
+  }, [selectedCategory, typeFilter, selectedOffice, statusFilter]);
 
   // Fetch categories
   useEffect(() => {
@@ -146,39 +142,6 @@ const DevicesScreen = () => {
     fetchTypes();
   }, [selectedCategory]);
 
-  // Fetch subcategories
-  useEffect(() => {
-    const fetchSubcategories = async () => {
-      if (!selectedCategory) {
-        setSubcategories([]);
-        setSelectedSubcategory('');
-        return;
-      }
-      try {
-        const token = await AsyncStorage.getItem('token');
-        if (!token) {
-          setSubcategories([]);
-          setSelectedSubcategory('');
-          return;
-        }
-        const res = await axios.get(`${API_URL}/device-categories/${selectedCategory}/subcategories`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.data && res.data.data && Array.isArray(res.data.data.subcategories)) {
-          setSubcategories(res.data.data.subcategories);
-        } else if (Array.isArray(res.data.subcategories)) {
-          setSubcategories(res.data.subcategories);
-        } else {
-          setSubcategories([]);
-        }
-        setSelectedSubcategory('');
-      } catch (e) {
-        setSubcategories([]);
-        setSelectedSubcategory('');
-      }
-    };
-    fetchSubcategories();
-  }, [selectedCategory]);
 
   // Fetch offices
   useEffect(() => {
@@ -221,11 +184,8 @@ const DevicesScreen = () => {
     if (typeFilter) {
       filtered = filtered.filter(device => device.type && device.type.id?.toString() === typeFilter);
     }
-    if (selectedSubcategory) {
-      filtered = filtered.filter(device => device.subcategory && device.subcategory.id?.toString() === selectedSubcategory);
-    }
     setFilteredDevices(Array.isArray(filtered) ? filtered : []);
-  }, [devices, search, selectedOffice, statusFilter, typeFilter, selectedSubcategory]);
+  }, [devices, search, selectedOffice, statusFilter, typeFilter]);
 
   // Pagination
   const totalPages = Math.ceil((filteredDevices?.length || 0) / pageSize);
@@ -244,6 +204,20 @@ const DevicesScreen = () => {
         return '#757575'; // gray
     }
   };
+  // Helper to get image URL    
+  const getImageUrl = (image) => {
+    if (!image) return null;
+    if (image.startsWith('http')) return image;
+    return `${API_URL}/storage/${image}`;
+  }
+  // Status filter options for devices
+const statusOptions = [
+  { label: "All", value: "" },
+  { label: "Resolved", value: "resolved" },
+  { label: "Pending", value: "pending" },
+  { label: "Under Repair", value: "repair" },
+  { label: "Decommissioned", value: "decommissioned" }
+];
 
   return (
     <View style={{flex: 1}}>
@@ -268,14 +242,7 @@ const DevicesScreen = () => {
         >
           <Text style={[styles.filterButtonText, typeFilter ? styles.filterButtonTextActive : null, !selectedCategory && styles.filterButtonTextDisabled]}>Type</Text>
         </TouchableOpacity>
-        {/* Subcategory Filter - always clickable if category is selected */}
-        <TouchableOpacity
-          style={[styles.filterButton, selectedSubcategory ? styles.filterButtonActive : null, !selectedCategory && styles.filterButtonDisabled]}
-          onPress={() => selectedCategory && setShowSubcategoryModal(true)}
-          disabled={!selectedCategory}
-        >
-          <Text style={[styles.filterButtonText, selectedSubcategory ? styles.filterButtonTextActive : null, !selectedCategory && styles.filterButtonTextDisabled]}>Subcategory</Text>
-        </TouchableOpacity>
+
         {/* Office Filter */}
         <TouchableOpacity
           style={[styles.filterButton, selectedOffice ? styles.filterButtonActive : null]}
@@ -427,38 +394,6 @@ const DevicesScreen = () => {
         </View>
       </Modal>
 
-      {/* Subcategory Modal */}
-      <Modal visible={showSubcategoryModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Subcategory</Text>
-            <ScrollView>
-              <TouchableOpacity
-                style={styles.modalOption}
-                onPress={() => {
-                  setSelectedSubcategory('');
-                  setShowSubcategoryModal(false);
-                }}
-              >
-                <Text style={styles.modalOptionText}>All Subcategories</Text>
-              </TouchableOpacity>
-              {subcategories.map(sub => (
-                <TouchableOpacity
-                  key={sub.id}
-                  style={styles.modalOption}
-                  onPress={() => {
-                    setSelectedSubcategory(sub.id);
-                    setShowSubcategoryModal(false);
-                  }}
-                >
-                  <Text style={styles.modalOptionText}>{sub.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            <Button title="Cancel" onPress={() => setShowSubcategoryModal(false)} />
-          </View>
-        </View>
-      </Modal>
 
       {/* Office Modal */}
       <Modal visible={showOfficeModal} transparent animationType="slide">
@@ -496,6 +431,7 @@ const DevicesScreen = () => {
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
