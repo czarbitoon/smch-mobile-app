@@ -236,3 +236,9 @@ const styles = StyleSheet.create({
 });
 
 export default OfficesScreen;
+
+const OfficeCard = ({ item, onPress }) => (
+  <TouchableOpacity>
+    <Text style={styles.officeName}>{item.name}</Text>
+  </TouchableOpacity>
+);

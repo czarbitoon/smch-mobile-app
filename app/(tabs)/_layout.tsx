@@ -14,14 +14,14 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const [role, setRole] = useState<number | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [notifCount, setNotifCount] = useState(0);
 
   React.useEffect(() => {
     const getRole = async () => {
       const storedRole = await AsyncStorage.getItem('user_role');
-      setRole(storedRole !== null ? Number(storedRole) : null);
+      setRole(storedRole !== null ? storedRole : null);
       setLoading(false);
     };
     getRole();
@@ -36,18 +36,30 @@ export default function TabLayout() {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
         const data = await res.json();
-        setNotifCount(data?.data?.unread_count || 0);
-      } catch {
+        // Defensive: support both { unread_count } and { data: { unread_count } }
+        let count = 0;
+        if (typeof data.unread_count === 'number') {
+          count = data.unread_count;
+        } else if (data.data && typeof data.data.unread_count === 'number') {
+          count = data.data.unread_count;
+        }
+        setNotifCount(count);
+      } catch (e) {
         setNotifCount(0);
+        if (__DEV__) console.error('Failed to fetch notification count', e);
       }
     };
     fetchNotifCount();
   }, []);
 
-  if (loading) return null;
+  if (loading) return (
+    <View style={{flex:1,justifyContent:'center',alignItems:'center',backgroundColor:'#fff'}}>
+      <Text style={{fontSize:18,color:'#888'}}>Loading...</Text>
+    </View>
+  );
 
   let screens = [];
-  if (role === 2 || role === 3) {
+  if (role === 'admin' || role === 'superadmin') {
     screens = [
       { name: 'index', title: 'Home', icon: 'house.fill' },
       { name: 'devices', title: 'Devices', icon: 'desktopcomputer' },
@@ -56,7 +68,7 @@ export default function TabLayout() {
       { name: 'notifications', title: 'Notifications', icon: 'bell.fill' },
       { name: 'profile', title: 'Profile', icon: 'person.crop.circle' },
     ];
-  } else if (role === 1) {
+  } else if (role === 'staff') {
     screens = [
       { name: 'index', title: 'Home', icon: 'house.fill' },
       { name: 'devices', title: 'Devices', icon: 'desktopcomputer' },
@@ -64,7 +76,7 @@ export default function TabLayout() {
       { name: 'notifications', title: 'Notifications', icon: 'bell.fill' },
       { name: 'profile', title: 'Profile', icon: 'person.crop.circle' },
     ];
-  } else if (role === 0) {
+  } else if (role === 'user') {
     screens = [
       { name: 'index', title: 'Home', icon: 'house.fill' },
       { name: 'devices', title: 'Devices', icon: 'desktopcomputer' },
@@ -112,6 +124,13 @@ export default function TabLayout() {
                         justifyContent: 'center',
                         alignItems: 'center',
                         paddingHorizontal: 2,
+                        borderWidth: 1,
+                        borderColor: '#fff',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.2,
+                        shadowRadius: 2,
+                        elevation: 2,
                       }}>
                         <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>{notifCount}</Text>
                       </View>
@@ -122,6 +141,20 @@ export default function TabLayout() {
               return <IconSymbol size={28} name={screen.icon} color={color} />;
             },
             tabBarTestID: screen.name === 'notifications' ? 'tab-notifications' : undefined,
+            tabBarLabelStyle: { fontWeight: '600', fontSize: 12 },
+            tabBarStyle: {
+              ...Platform.select({ ios: { position: 'absolute' }, default: {} }),
+              backgroundColor: '#f8f9fa',
+              borderTopWidth: 0.5,
+              borderTopColor: '#e0e0e0',
+              height: 60,
+              paddingBottom: Platform.OS === 'ios' ? 10 : 6,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: -2 },
+              shadowOpacity: 0.05,
+              shadowRadius: 4,
+              elevation: 8,
+            },
           }}
           listeners={screen.name === 'notifications' ? {
             tabPress: (e) => {

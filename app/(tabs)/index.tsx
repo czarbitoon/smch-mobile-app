@@ -6,9 +6,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function HomeScreen() {
   const router = useRouter();
   useEffect(() => {
+    let isMounted = true;
     const checkRoleAndNavigate = async () => {
       const token = await AsyncStorage.getItem('token');
       const userRole = await AsyncStorage.getItem('user_role');
+      if (!isMounted) return;
       if (!token || !userRole) {
         router.replace('/auth/login');
         return;
@@ -28,6 +30,7 @@ export default function HomeScreen() {
       }
     };
     checkRoleAndNavigate();
+    return () => { isMounted = false; };
   }, []);
   return (
     <View style={styles.container}>

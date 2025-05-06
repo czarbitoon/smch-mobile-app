@@ -1,20 +1,22 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import axios from "axios";
-import { API_URL } from "../constants/theme";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
 
   const fetchUsers = async () => {
     setLoading(true);
     setError("");
     try {
+      
       const token = await AsyncStorage.getItem("token");
       const res = await axios.get(`${API_URL}/users`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -86,7 +88,7 @@ const UserManagement = () => {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => navigation?.goBack ? navigation.goBack() : null} testID="back-btn">
+      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => router.back()} testID="back-btn">
         <Ionicons name="arrow-back" size={28} color="#1976d2" />
       </TouchableOpacity>
       <Text style={styles.title}>User Management</Text>

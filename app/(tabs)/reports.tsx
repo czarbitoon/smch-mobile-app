@@ -116,7 +116,9 @@ const ReportsScreen = () => {
 
   const renderReportItem = ({ item }) => (
     <TouchableOpacity
-      style={[styles.reportCard, { borderColor: getStatusColor(item.status), borderWidth: 2 }]}> // highlight card border by status
+      style={[styles.reportCard, { borderColor: getStatusColor(item.status), borderWidth: 2 }]}
+      onPress={() => handleReportPress(item)}
+    >
       <Text style={styles.reportTitle}>{item.title}</Text>
       <Text style={[styles.reportStatus, { color: getStatusColor(item.status) }]}>{item.status || (item.resolved_by ? 'Resolved' : 'Pending')}</Text>
       <Text numberOfLines={2} style={styles.reportDesc}>{item.description}</Text>
@@ -147,7 +149,7 @@ const ReportsScreen = () => {
               <Text style={{ marginBottom: 8 }}>{selectedReport.description}</Text>
               {selectedReport.created_at && <Text style={{ fontWeight: 'bold', marginTop: 8 }}>Created: <Text style={{ fontWeight: 'normal' }}>{new Date(selectedReport.created_at).toLocaleString()}</Text></Text>}
               {selectedReport.resolved_by && <Text style={{ fontWeight: 'bold', marginTop: 8 }}>Resolved By: <Text style={{ fontWeight: 'normal' }}>{selectedReport.resolved_by}</Text></Text>}
-              {userType >= 2 && !selectedReport.resolved_by && (
+              {userRole === 'admin' && !selectedReport.resolved_by && (
                 <View style={{ marginTop: 24 }}>
                   <Button title={detailLoading ? 'Resolving...' : 'Resolve Report'} onPress={handleResolve} disabled={detailLoading} color="#388e3c" />
                 </View>
@@ -163,13 +165,7 @@ const ReportsScreen = () => {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => {
-        if (router.canGoBack()) {
-          router.back();
-        } else {
-          router.replace('/(tabs)/index');
-        }
-      }} testID="back-btn">
+      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => router.back()} testID="back-btn">
         <Ionicons name="arrow-back" size={28} color="#1976d2" />
       </TouchableOpacity>
       <Text style={styles.title}>Reports</Text>

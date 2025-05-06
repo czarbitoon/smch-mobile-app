@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Button, ScrollView, TextInput, ActivityIndicator, Image, FlatList, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, Button, ScrollView, TextInput, ActivityIndicator, Image, FlatList, Modal, TouchableOpacity } from 'react-native';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,31 +8,31 @@ import { Ionicons } from '@expo/vector-icons';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
 
-const DevicesScreen = () => {
+// Helper to get status color
+const getStatusColor = (status) => {
+  switch (status) {
+    case 'resolved':
+      return '#388e3c'; // green
+    case 'pending':
+      return '#fbc02d'; // yellow
+    case 'repair':
+      return '#1976d2'; // blue
+    case 'decommissioned':
+      return '#d32f2f'; // red
+    default:
+      return '#757575'; // grey
+  }
+};
+
+// Custom hook for fetching with token and error handling
+const useFetchWithToken = (fetchFn, deps = []) => {
   const router = useRouter();
-  const [devices, setDevices] = useState([]);
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [search, setSearch] = useState('');
-  const [filteredDevices, setFilteredDevices] = useState([]);
-  const [statusFilter, setStatusFilter] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [types, setTypes] = useState([]);
-  const [offices, setOffices] = useState([]);
-  const [selectedOffice, setSelectedOffice] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showTypeModal, setShowTypeModal] = useState(false);
-  const [showOfficeModal, setShowOfficeModal] = useState(false);
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const pageSize = 9;
-  const [userRole, setUserRole] = useState("");
-
-  // Fetch devices
   useEffect(() => {
-    const fetchDevices = async () => {
+    let isMounted = true;
+    const fetchData = async () => {
       setLoading(true);
       setError(null);
       try {
@@ -43,140 +43,121 @@ const DevicesScreen = () => {
           setLoading(false);
           return;
         }
-        const params = {};
-        if (selectedCategory) params.device_category_id = selectedCategory;
-        if (typeFilter) params.device_type_id = typeFilter;
-        if (selectedOffice) params.office_id = selectedOffice;
-        if (statusFilter) params.status = statusFilter;
-        params.per_page = 200;
-        const res = await axios.get(`${API_URL}/devices`, {
-          headers: { Authorization: `Bearer ${token}` },
-          params,
-        });
-        let deviceArray = [];
-        if (res.data && res.data.data && Array.isArray(res.data.data.data)) {
-          deviceArray = res.data.data.data;
-        } else if (Array.isArray(res.data.data)) {
-          deviceArray = res.data.data;
-        } else {
-          deviceArray = [];
-        }
-        setDevices(deviceArray);
+        const result = await fetchFn(token);
+        if (isMounted) setData(result);
       } catch (e) {
-        if (e.response && e.response.status === 401) {
+        if (e?.response?.status === 401) {
           setError('Session expired. Please login again.');
           await AsyncStorage.removeItem('token');
           router.replace('/auth/login');
         } else {
-          setError('Failed to fetch devices');
+          setError('Failed to fetch data');
         }
-        setDevices([]);
+        if (isMounted) setData([]);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
-    fetchDevices();
+    fetchData();
+    return () => { isMounted = false; };
+  }, deps);
+  return { data, loading, error };
+}
+const DevicesScreen = () => {
+  const router = useRouter();
+  // Filter state
+  const [search, setSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [selectedOffice, setSelectedOffice] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 9;
+  // Modal state
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showTypeModal, setShowTypeModal] = useState(false);
+  const [showOfficeModal, setShowOfficeModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [selectedDevice, setSelectedDevice] = useState(null);
+  const [showDeviceModal, setShowDeviceModal] = useState(false);
+  // Fetch devices
+  const { data: devices, loading, error } = useFetchWithToken(async (token) => {
+    const params = {};
+    if (selectedCategory) params.device_category_id = selectedCategory;
+    if (typeFilter) params.device_type_id = typeFilter;
+    if (selectedOffice) params.office_id = selectedOffice;
+    if (statusFilter) params.status = statusFilter;
+    params.per_page = 200;
+    const res = await axios.get(`${API_URL}/devices`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params,
+    });
+    let deviceArray = [];
+    if (res.data && res.data.data && Array.isArray(res.data.data.data)) {
+      deviceArray = res.data.data.data;
+    } else if (Array.isArray(res.data.data)) {
+      deviceArray = res.data.data;
+    } else {
+      deviceArray = [];
+    }
+    return deviceArray;
   }, [selectedCategory, typeFilter, selectedOffice, statusFilter]);
-
   // Fetch categories
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const token = await AsyncStorage.getItem('token');
-        if (!token) {
-          setCategories([]);
-          return;
-        }
-        const categoriesRes = await axios.get(`${API_URL}/device-categories`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        let categoriesArr = [];
-        if (categoriesRes.data && categoriesRes.data.data && Array.isArray(categoriesRes.data.data.categories)) {
-          categoriesArr = categoriesRes.data.data.categories;
-        } else if (categoriesRes.data && Array.isArray(categoriesRes.data.categories)) {
-          categoriesArr = categoriesRes.data.categories;
-        } else if (Array.isArray(categoriesRes.data)) {
-          categoriesArr = categoriesRes.data;
-        } else {
-          categoriesArr = [];
-        }
-        setCategories(categoriesArr);
-      } catch (e) {
-        setCategories([]);
-      }
-    };
-    fetchCategories();
+  const { data: categories } = useFetchWithToken(async (token) => {
+    const categoriesRes = await axios.get(`${API_URL}/device-categories`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    let categoriesArr = [];
+    if (categoriesRes.data && categoriesRes.data.data && Array.isArray(categoriesRes.data.data.categories)) {
+      categoriesArr = categoriesRes.data.data.categories;
+    } else if (categoriesRes.data && Array.isArray(categoriesRes.data.categories)) {
+      categoriesArr = categoriesRes.data.categories;
+    } else if (Array.isArray(categoriesRes.data)) {
+      categoriesArr = categoriesRes.data;
+    } else {
+      categoriesArr = [];
+    }
+    return categoriesArr;
   }, []);
-
   // Fetch types
-  useEffect(() => {
-    const fetchTypes = async () => {
-      if (!selectedCategory) {
-        setTypes([]);
-        setTypeFilter('');
-        return;
-      }
-      try {
-        const token = await AsyncStorage.getItem('token');
-        if (!token) {
-          setTypes([]);
-          setTypeFilter('');
-          return;
-        }
-        const typesRes = await axios.get(`${API_URL}/device-categories/${selectedCategory}/types`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (typesRes.data && typesRes.data.data && Array.isArray(typesRes.data.data.types)) {
-          setTypes(typesRes.data.data.types);
-        } else if (Array.isArray(typesRes.data.types)) {
-          setTypes(typesRes.data.types);
-        } else {
-          setTypes([]);
-        }
-        setTypeFilter('');
-      } catch (e) {
-        setTypes([]);
-        setTypeFilter('');
-      }
-    };
-    fetchTypes();
+  const { data: types } = useFetchWithToken(async (token) => {
+    if (!selectedCategory) return [];
+    const typesRes = await axios.get(`${API_URL}/device-categories/${selectedCategory}/types`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (typesRes.data && typesRes.data.data && Array.isArray(typesRes.data.data.types)) {
+      return typesRes.data.data.types;
+    } else if (Array.isArray(typesRes.data.types)) {
+      return typesRes.data.types;
+    } else {
+      return [];
+    }
   }, [selectedCategory]);
-
-
   // Fetch offices
-  useEffect(() => {
-    const fetchOffices = async () => {
-      try {
-        const token = await AsyncStorage.getItem('token');
-        if (!token) {
-          setOffices([]);
-          return;
-        }
-        const res = await axios.get(`${API_URL}/offices`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.data && res.data.data && Array.isArray(res.data.data.offices)) {
-          setOffices(res.data.data.offices);
-        } else if (Array.isArray(res.data.offices)) {
-          setOffices(res.data.offices);
-        } else {
-          setOffices([]);
-        }
-      } catch (e) {
-        setOffices([]);
-      }
-    };
-    fetchOffices();
+  const { data: offices } = useFetchWithToken(async (token) => {
+    const res = await axios.get(`${API_URL}/offices`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.data && res.data.data && Array.isArray(res.data.data.offices)) {
+      return res.data.data.offices;
+    } else if (Array.isArray(res.data.offices)) {
+      return res.data.offices;
+    } else {
+      return [];
+    }
   }, []);
-
   // Filter devices
-  useEffect(() => {
+  const filteredDevices = React.useMemo(() => {
     let filtered = Array.isArray(devices) ? devices : [];
     if (search) {
       filtered = filtered.filter(device => device.name?.toLowerCase().includes(search.toLowerCase()));
     }
     if (selectedOffice) {
-      filtered = filtered.filter(device => device.office && device.office.id?.toString() === selectedOffice);
+      filtered = filtered.filter(device => {
+        // Ensure both IDs are compared as strings and handle possible nulls
+        const deviceOfficeId = device.office?.id?.toString() || device.office_id?.toString() || '';
+        return deviceOfficeId === selectedOffice.toString();
+      });
     }
     if (statusFilter) {
       filtered = filtered.filter(device => device.status?.toString().toLowerCase() === statusFilter.toLowerCase());
@@ -184,41 +165,19 @@ const DevicesScreen = () => {
     if (typeFilter) {
       filtered = filtered.filter(device => device.type && device.type.id?.toString() === typeFilter);
     }
-    setFilteredDevices(Array.isArray(filtered) ? filtered : []);
+    return Array.isArray(filtered) ? filtered : [];
   }, [devices, search, selectedOffice, statusFilter, typeFilter]);
-
   // Pagination
   const totalPages = Math.ceil((filteredDevices?.length || 0) / pageSize);
   const paginatedDevices = filteredDevices?.slice((currentPage - 1) * pageSize, currentPage * pageSize) || [];
-
-  // Helper to get status color
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'resolved':
-        return '#388e3c'; // green
-      case 'pending':
-        return '#fbc02d'; // yellow
-      case 'in_progress':
-        return '#1976d2'; // blue
-      default:
-        return '#757575'; // gray
-    }
-  };
-  // Helper to get image URL    
-  const getImageUrl = (image) => {
-    if (!image) return null;
-    if (image.startsWith('http')) return image;
-    return `${API_URL}/storage/${image}`;
-  }
   // Status filter options for devices
-const statusOptions = [
-  { label: "All", value: "" },
-  { label: "Resolved", value: "resolved" },
-  { label: "Pending", value: "pending" },
-  { label: "Under Repair", value: "repair" },
-  { label: "Decommissioned", value: "decommissioned" }
-];
-
+  const statusOptions = [
+    { label: "All", value: "" },
+    { label: "Resolved", value: "resolved" },
+    { label: "Pending", value: "pending" },
+    { label: "Under Repair", value: "repair" },
+    { label: "Decommissioned", value: "decommissioned" }
+  ];
   return (
     <View style={{flex: 1}}>
       <View style={styles.container}>
@@ -232,23 +191,30 @@ const statusOptions = [
           style={[styles.filterButton, selectedCategory ? styles.filterButtonActive : null]}
           onPress={() => setShowCategoryModal(true)}
         >
-          <Text style={[styles.filterButtonText, selectedCategory ? styles.filterButtonTextActive : null]}>Category</Text>
+          <Text style={[styles.filterButtonText, selectedCategory ? styles.filterButtonTextActive : null]}>
+            {selectedCategory ? (categories.find(cat => cat.id === selectedCategory)?.name || 'Category') : 'Category'}
+          </Text>
         </TouchableOpacity>
         {/* Type Filter - always clickable if category is selected */}
         <TouchableOpacity
           style={[styles.filterButton, typeFilter ? styles.filterButtonActive : null, !selectedCategory && styles.filterButtonDisabled]}
-          onPress={() => selectedCategory && setShowTypeModal(true)}
+          onPress={() => {
+            if (selectedCategory) setShowTypeModal(true);
+          }}
           disabled={!selectedCategory}
         >
-          <Text style={[styles.filterButtonText, typeFilter ? styles.filterButtonTextActive : null, !selectedCategory && styles.filterButtonTextDisabled]}>Type</Text>
+          <Text style={[styles.filterButtonText, typeFilter ? styles.filterButtonTextActive : null, !selectedCategory && styles.filterButtonTextDisabled]}>
+            {typeFilter ? (types.find(type => type.id === typeFilter)?.name || 'Type') : 'Type'}
+          </Text>
         </TouchableOpacity>
-
         {/* Office Filter */}
         <TouchableOpacity
           style={[styles.filterButton, selectedOffice ? styles.filterButtonActive : null]}
           onPress={() => setShowOfficeModal(true)}
         >
-          <Text style={[styles.filterButtonText, selectedOffice ? styles.filterButtonTextActive : null]}>Office</Text>
+          <Text style={[styles.filterButtonText, selectedOffice ? styles.filterButtonTextActive : null]}>
+            {selectedOffice ? (offices.find(office => office.id === selectedOffice)?.name || 'Office') : 'Office'}
+          </Text>
         </TouchableOpacity>
         {/* Status Filter - use Picker instead of modal */}
         <TouchableOpacity style={styles.filterButton} onPress={() => setShowStatusModal(true)}>
@@ -280,7 +246,6 @@ const statusOptions = [
           </View>
         </Modal>
       </View>
-      
       <TextInput
         style={styles.searchInput}
         placeholder="Search devices..."
@@ -296,18 +261,18 @@ const statusOptions = [
         <FlatList
           data={paginatedDevices}
           keyExtractor={item => item.id?.toString()}
-            renderItem={({ item }) => (
-            <View style={[styles.deviceCard, { borderColor: getStatusColor(item.status), borderWidth: 2 }]}> // highlight card border by status
-              <Image source={{ uri: item.image_url || undefined }} style={styles.deviceImage} resizeMode="cover" />
-              <Text style={styles.deviceName}>{item.name}</Text>
-              <Text style={styles.deviceMeta}>{item.type?.name || ''} | {item.office?.name || ''}</Text>
-              <Text style={[styles.deviceMeta, { color: '#888', fontSize: 13 }]}>{item.serial_number}</Text>
-              <Text style={[styles.deviceStatus, { color: getStatusColor(item.status) }]}>{item.status}</Text>
-            </View>
+          renderItem={({ item }) => (
+            <DeviceCard
+              device={item}
+              onPress={() => {
+                setSelectedDevice(item);
+                setShowDeviceModal(true);
+              }}
+            />
           )}
-          numColumns={3}
-          contentContainerStyle={styles.gridContainer}
-          ListEmptyComponent={<Text style={styles.emptyText}>No devices found.</Text>}
+          contentContainerStyle={styles.deviceList}
+          ListEmptyComponent={loading ? <ActivityIndicator size="large" color="#1976d2" /> : <Text style={styles.emptyText}>No devices found.</Text>}
+          showsVerticalScrollIndicator={false}
         />
       )}
       <View style={styles.paginationContainer}>
@@ -327,7 +292,6 @@ const statusOptions = [
           <Text style={styles.pageButtonText}>Next</Text>
         </TouchableOpacity>
       </View>
-
       {/* Category Modal */}
       <Modal visible={showCategoryModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
@@ -349,6 +313,7 @@ const statusOptions = [
                   style={styles.modalOption}
                   onPress={() => {
                     setSelectedCategory(cat.id);
+                    setTypeFilter('');
                     setShowCategoryModal(false);
                   }}
                 >
@@ -360,41 +325,44 @@ const statusOptions = [
           </View>
         </View>
       </Modal>
-
       {/* Type Modal */}
       <Modal visible={showTypeModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Select Type</Text>
-            <ScrollView>
-              <TouchableOpacity
-                style={styles.modalOption}
-                onPress={() => {
-                  setTypeFilter('');
-                  setShowTypeModal(false);
-                }}
-              >
-                <Text style={styles.modalOptionText}>All Types</Text>
-              </TouchableOpacity>
-              {types.map(type => (
-                <TouchableOpacity
-                  key={type.id}
-                  style={styles.modalOption}
-                  onPress={() => {
-                    setTypeFilter(type.id);
-                    setShowTypeModal(false);
-                  }}
-                >
-                  <Text style={styles.modalOptionText}>{type.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            <Button title="Cancel" onPress={() => setShowTypeModal(false)} />
+            {selectedCategory ? (
+              types.length > 0 ? (
+                types.map(type => (
+                  <TouchableOpacity
+                    key={type.id}
+                    style={[styles.modalOption, typeFilter === type.id && styles.modalOptionSelected]}
+                    onPress={() => {
+                      setTypeFilter(type.id);
+                      setShowTypeModal(false);
+                    }}
+                  >
+                    <Text style={typeFilter === type.id ? styles.modalOptionTextSelected : styles.modalOptionText}>{type.name}</Text>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <Text style={{ color: '#888', marginVertical: 16 }}>No types available for this category.</Text>
+              )
+            ) : (
+              <Text style={{ color: '#888', marginVertical: 16 }}>Please select a category first.</Text>
+            )}
+            <TouchableOpacity
+              style={[styles.modalOption, { backgroundColor: '#eee', marginTop: 12 }]}
+              onPress={() => {
+                setTypeFilter('');
+                setShowTypeModal(false);
+              }}
+            >
+              <Text style={{ color: '#1976d2', fontWeight: 'bold' }}>Clear Type Filter</Text>
+            </TouchableOpacity>
+            <Button title="Close" onPress={() => setShowTypeModal(false)} />
           </View>
         </View>
       </Modal>
-
-
       {/* Office Modal */}
       <Modal visible={showOfficeModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
@@ -424,6 +392,28 @@ const statusOptions = [
               ))}
             </ScrollView>
             <Button title="Cancel" onPress={() => setShowOfficeModal(false)} />
+          </View>
+        </View>
+      </Modal>
+      {/* Device Details Modal */}
+      <Modal visible={showDeviceModal} transparent animationType="slide" onRequestClose={() => setShowDeviceModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {selectedDevice && (
+              <>
+                <Text style={styles.modalTitle}>{selectedDevice.name}</Text>
+                {selectedDevice.image_url ? (
+                  <Image source={{ uri: selectedDevice.image_url }} style={styles.deviceImage} resizeMode="cover" />
+                ) : (
+                  <View style={[styles.deviceImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#eee' }]}> 
+                    <Ionicons name="hardware-chip-outline" size={48} color="#bdbdbd" />
+                  </View>
+                )}
+                <Text style={[styles.deviceStatus, { color: getStatusColor(selectedDevice.status) }]}>{selectedDevice.status}</Text>
+                <Text style={styles.deviceOffice}>{selectedDevice.office?.name || 'No Office'}</Text>
+                <Button title="Close" onPress={() => setShowDeviceModal(false)} />
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -520,6 +510,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
+    flexDirection: 'row',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   deviceImage: {
     width: 70,
@@ -527,25 +527,37 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 8,
     backgroundColor: '#e0e0e0',
+    width: 64,
+    height: 64,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#e0e0e0',
+  },
+  deviceImagePlaceholder: {
+    width: 64,
+    height: 64,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#e0e0e0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deviceInfo: {
+    flex: 1,
   },
   deviceName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#222',
     marginBottom: 2,
-    textAlign: 'center',
   },
-  deviceMeta: {
-    fontSize: 13,
-    color: '#666',
+  deviceType: {
+    fontSize: 14,
+    color: '#757575',
     marginBottom: 2,
-    textAlign: 'center',
   },
   deviceStatus: {
     fontSize: 13,
     fontWeight: 'bold',
-    marginTop: 2,
-    textAlign: 'center',
   },
   emptyText: {
     fontSize: 16,
@@ -615,4 +627,33 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
 export default DevicesScreen;
+
+
+// Device card rendering (moved inside DevicesScreen for router access)
+const DeviceCard = ({ item, onPress }) => {
+  if (!item || typeof item !== 'object') {
+    return (
+      <View style={[styles.deviceCard, { borderColor: '#ccc', borderWidth: 2, justifyContent: 'center', alignItems: 'center', minHeight: 100 }]}> 
+        <Text style={{ color: '#d32f2f' }}>Invalid device data</Text>
+      </View>
+    );
+  }
+  const status = item.status || 'unknown';
+  const name = item.name || 'Unnamed Device';
+  const imageUrl = item.image_url || null;
+  return (
+    <TouchableOpacity style={[styles.deviceCard, { borderColor: getStatusColor(status), borderWidth: 2 }]} onPress={onPress} testID="device-card">
+      {imageUrl ? (
+        <Image source={{ uri: imageUrl }} style={styles.deviceImage} resizeMode="cover" />
+      ) : (
+        <View style={[styles.deviceImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#eee' }]}> 
+          <Ionicons name="image" size={32} color="#bbb" />
+        </View>
+      )}
+      <Text style={styles.deviceName}>{name}</Text>
+      <Text style={[styles.deviceStatus, { color: getStatusColor(status) }]}>{status.charAt(0).toUpperCase() + status.slice(1)}</Text>
+    </TouchableOpacity>
+  );
+};

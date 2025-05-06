@@ -3,9 +3,24 @@ import { View, Text, StyleSheet, Button, TextInput, ActivityIndicator, Alert, Sc
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { Picker } from '@react-native-picker/picker';
+import { Modal, TouchableOpacity } from 'react-native';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
+
+const CustomPickerModal = ({ visible, onClose, options, selectedValue, onValueChange }) => (
+  <Modal visible={visible} transparent={true} animationType="slide">
+    <View style={styles.modalContainer}>
+      <View style={styles.modalContent}>
+        {options.map((option) => (
+          <TouchableOpacity key={option.value} onPress={() => { onValueChange(option.value); onClose(); }}>
+            <Text style={styles.modalOption}>{option.label}</Text>
+          </TouchableOpacity>
+        ))}
+        <Button title="Close" onPress={onClose} />
+      </View>
+    </View>
+  </Modal>
+);
 
 const DeviceCreateScreen = () => {
   const router = useRouter();
@@ -19,6 +34,10 @@ const DeviceCreateScreen = () => {
   const [offices, setOffices] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedType, setSelectedType] = useState('');
+  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
+  const [typeModalVisible, setTypeModalVisible] = useState(false);
+  const [officeModalVisible, setOfficeModalVisible] = useState(false);
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
 
   const handleSubmit = async () => {
     if (!name || !type || !officeId || !status) {
@@ -96,48 +115,51 @@ const DeviceCreateScreen = () => {
         value={name}
         onChangeText={setName}
       />
-      <Picker
+      <TouchableOpacity onPress={() => setCategoryModalVisible(true)} style={styles.input}>
+        <Text>{selectedCategory ? categories.find(cat => cat.id === selectedCategory).name : 'Select Category'}</Text>
+      </TouchableOpacity>
+      <CustomPickerModal
+        visible={categoryModalVisible}
+        onClose={() => setCategoryModalVisible(false)}
+        options={categories.map(cat => ({ label: cat.name, value: cat.id }))}
         selectedValue={selectedCategory}
         onValueChange={setSelectedCategory}
-        style={styles.input}
-      >
-        <Picker.Item label="Select Category" value="" />
-        {categories.map((cat) => (
-          <Picker.Item key={cat.id} label={cat.name} value={cat.id} />
-        ))}
-      </Picker>
-      <Picker
+      />
+      <TouchableOpacity onPress={() => setTypeModalVisible(true)} style={styles.input} disabled={!selectedCategory}>
+        <Text>{selectedType ? types.find(type => type.id === selectedType).name : 'Select Type'}</Text>
+      </TouchableOpacity>
+      <CustomPickerModal
+        visible={typeModalVisible}
+        onClose={() => setTypeModalVisible(false)}
+        options={types.map(type => ({ label: type.name, value: type.id }))}
         selectedValue={selectedType}
         onValueChange={setSelectedType}
-        style={styles.input}
-        enabled={!!selectedCategory}
-      >
-        <Picker.Item label="Select Type" value="" />
-        {types.map((type) => (
-          <Picker.Item key={type.id} label={type.name} value={type.id} />
-        ))}
-      </Picker>
-      <Picker
+      />
+      <TouchableOpacity onPress={() => setOfficeModalVisible(true)} style={styles.input}>
+        <Text>{officeId ? offices.find(office => office.id === officeId).name : 'Select Office'}</Text>
+      </TouchableOpacity>
+      <CustomPickerModal
+        visible={officeModalVisible}
+        onClose={() => setOfficeModalVisible(false)}
+        options={offices.map(office => ({ label: office.name, value: office.id }))}
         selectedValue={officeId}
         onValueChange={setOfficeId}
-        style={styles.input}
-      >
-        <Picker.Item label="Select Office" value="" />
-        {offices.map((office) => (
-          <Picker.Item key={office.id} label={office.name} value={office.id} />
-        ))}
-      </Picker>
-      <Picker
+      />
+      <TouchableOpacity onPress={() => setStatusModalVisible(true)} style={styles.input}>
+        <Text>{status || 'Select Status'}</Text>
+      </TouchableOpacity>
+      <CustomPickerModal
+        visible={statusModalVisible}
+        onClose={() => setStatusModalVisible(false)}
+        options={[
+          { label: 'Resolved', value: 'resolved' },
+          { label: 'Pending', value: 'pending' },
+          { label: 'Repair', value: 'repair' },
+          { label: 'Decommissioned', value: 'decommissioned' }
+        ]}
         selectedValue={status}
         onValueChange={setStatus}
-        style={styles.input}
-      >
-        <Picker.Item label="Select Status" value="" />
-        <Picker.Item label="Resolved" value="resolved" />
-        <Picker.Item label="Pending" value="pending" />
-        <Picker.Item label="Repair" value="repair" />
-        <Picker.Item label="Decommissioned" value="decommissioned" />
-      </Picker>
+      />
       {loading ? (
         <ActivityIndicator size="large" color="#007bff" />
       ) : (
@@ -170,6 +192,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#fafafa',
   },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '80%',
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  modalOption: {
+    padding: 10,
+    fontSize: 18,
+  },
 });
 
 export default DeviceCreateScreen;
+
+// Confirmed: No subcategory-related state, props, or logic present in the first 60 lines. No further action needed unless found in later lines.
