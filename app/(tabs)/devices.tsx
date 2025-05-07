@@ -181,7 +181,7 @@ const DevicesScreen = () => {
   return (
     <View style={{flex: 1}}>
       <View style={styles.container}>
-      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => router.back()} testID="back-btn">
+      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => router.replace('/(tabs)/index')} testID="back-btn">
         <Ionicons name="arrow-back" size={28} color="#1976d2" />
       </TouchableOpacity>
       <Text style={styles.title}>Devices</Text>
@@ -260,18 +260,40 @@ const DevicesScreen = () => {
       ) : (
         <FlatList
           data={paginatedDevices}
-          keyExtractor={item => item.id?.toString()}
+          keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
           renderItem={({ item }) => (
-            <DeviceCard
-              device={item}
-              onPress={() => {
-                setSelectedDevice(item);
-                setShowDeviceModal(true);
-              }}
-            />
+            <TouchableOpacity
+              style={styles.deviceCard}
+              onPress={() => router.push(`/device/${item.id}`)}
+              activeOpacity={0.85}
+            >
+              <View style={styles.deviceImageWrapper}>
+                {item.image_url ? (
+                  <Image
+                    source={{ uri: item.image_url }}
+                    style={styles.deviceImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.deviceImagePlaceholder}>
+                    <Ionicons name="cube-outline" size={48} color="#bdbdbd" />
+                  </View>
+                )}
+              </View>
+              <View style={styles.deviceInfo}>
+                <Text style={styles.deviceName} numberOfLines={1}>{item.name}</Text>
+                <Text style={styles.deviceType} numberOfLines={1}>{item.type?.name || 'Unknown Type'}</Text>
+                <Text style={styles.deviceOffice} numberOfLines={1}>{item.office?.name || 'Unknown Office'}</Text>
+                <Text style={[styles.deviceStatus, { color: getStatusColor(item.status) }]}>{item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : 'Unknown'}</Text>
+              </View>
+            </TouchableOpacity>
           )}
-          contentContainerStyle={styles.deviceList}
-          ListEmptyComponent={loading ? <ActivityIndicator size="large" color="#1976d2" /> : <Text style={styles.emptyText}>No devices found.</Text>}
+          numColumns={3}
+          columnWrapperStyle={{ justifyContent: 'space-between' }}
+          contentContainerStyle={{ paddingBottom: 32 }}
+          ListEmptyComponent={() => (
+            <Text style={{ textAlign: 'center', color: '#888', marginTop: 32 }}>No devices found.</Text>
+          )}
           showsVerticalScrollIndicator={false}
         />
       )}
@@ -395,28 +417,6 @@ const DevicesScreen = () => {
           </View>
         </View>
       </Modal>
-      {/* Device Details Modal */}
-      <Modal visible={showDeviceModal} transparent animationType="slide" onRequestClose={() => setShowDeviceModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {selectedDevice && (
-              <>
-                <Text style={styles.modalTitle}>{selectedDevice.name}</Text>
-                {selectedDevice.image_url ? (
-                  <Image source={{ uri: selectedDevice.image_url }} style={styles.deviceImage} resizeMode="cover" />
-                ) : (
-                  <View style={[styles.deviceImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#eee' }]}> 
-                    <Ionicons name="hardware-chip-outline" size={48} color="#bdbdbd" />
-                  </View>
-                )}
-                <Text style={[styles.deviceStatus, { color: getStatusColor(selectedDevice.status) }]}>{selectedDevice.status}</Text>
-                <Text style={styles.deviceOffice}>{selectedDevice.office?.name || 'No Office'}</Text>
-                <Button title="Close" onPress={() => setShowDeviceModal(false)} />
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
     </View>
     </View>
   );
@@ -498,11 +498,9 @@ const styles = StyleSheet.create({
   },
   deviceCard: {
     flex: 1,
-    minWidth: 110,
-    maxWidth: '30%',
     backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 10,
+    borderRadius: 16,
+    padding: 12,
     margin: 6,
     alignItems: 'center',
     shadowColor: '#000',
@@ -510,54 +508,56 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
-    flexDirection: 'row',
-    backgroundColor: '#f5f5f5',
+    minWidth: 120,
+    maxWidth: 180,
+  },
+  deviceImageWrapper: {
+    width: 90,
+    height: 90,
     borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    overflow: 'hidden',
+    backgroundColor: '#f0f0f0',
+    marginBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   deviceImage: {
-    width: 70,
-    height: 70,
-    borderRadius: 10,
-    marginBottom: 8,
-    backgroundColor: '#e0e0e0',
-    width: 64,
-    height: 64,
-    borderRadius: 8,
-    marginRight: 12,
-    backgroundColor: '#e0e0e0',
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
   },
   deviceImagePlaceholder: {
-    width: 64,
-    height: 64,
-    borderRadius: 8,
-    marginRight: 12,
+    width: 90,
+    height: 90,
+    borderRadius: 12,
     backgroundColor: '#e0e0e0',
     alignItems: 'center',
     justifyContent: 'center',
   },
   deviceInfo: {
-    flex: 1,
+    alignItems: 'center',
+    width: '100%',
   },
   deviceName: {
-    fontSize: 18,
     fontWeight: 'bold',
+    fontSize: 16,
+    color: '#222',
     marginBottom: 2,
   },
   deviceType: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#757575',
+    marginBottom: 2,
+  },
+  deviceOffice: {
+    fontSize: 12,
+    color: '#9e9e9e',
     marginBottom: 2,
   },
   deviceStatus: {
     fontSize: 13,
     fontWeight: 'bold',
+    marginTop: 2,
   },
   emptyText: {
     fontSize: 16,
@@ -631,29 +631,25 @@ const styles = StyleSheet.create({
 export default DevicesScreen;
 
 
-// Device card rendering (moved inside DevicesScreen for router access)
-const DeviceCard = ({ item, onPress }) => {
-  if (!item || typeof item !== 'object') {
-    return (
-      <View style={[styles.deviceCard, { borderColor: '#ccc', borderWidth: 2, justifyContent: 'center', alignItems: 'center', minHeight: 100 }]}> 
-        <Text style={{ color: '#d32f2f' }}>Invalid device data</Text>
-      </View>
-    );
+const DeviceCard = ({ device, onPress }) => {
+  if (!device || typeof device !== 'object') {
+    return null;
   }
-  const status = item.status || 'unknown';
-  const name = item.name || 'Unnamed Device';
-  const imageUrl = item.image_url || null;
+  const status = device.status;
   return (
-    <TouchableOpacity style={[styles.deviceCard, { borderColor: getStatusColor(status), borderWidth: 2 }]} onPress={onPress} testID="device-card">
-      {imageUrl ? (
-        <Image source={{ uri: imageUrl }} style={styles.deviceImage} resizeMode="cover" />
-      ) : (
-        <View style={[styles.deviceImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#eee' }]}> 
-          <Ionicons name="image" size={32} color="#bbb" />
+    <TouchableOpacity style={styles.deviceCard} onPress={onPress} testID={`device-card-${device.id}`}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        {device.image_url ? (
+          <Image source={{ uri: device.image_url }} style={styles.deviceImage} />
+        ) : (
+          <View style={styles.deviceImagePlaceholder} />
+        )}
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={styles.deviceName}>{device.name}</Text>
+          <Text style={styles.deviceType}>{device.type?.name || 'Unknown Type'}</Text>
+          <Text style={[styles.deviceStatus, { color: getStatusColor(status) }]}>{status}</Text>
         </View>
-      )}
-      <Text style={styles.deviceName}>{name}</Text>
-      <Text style={[styles.deviceStatus, { color: getStatusColor(status) }]}>{status.charAt(0).toUpperCase() + status.slice(1)}</Text>
+      </View>
     </TouchableOpacity>
   );
 };

@@ -19,6 +19,8 @@ const ReportsScreen = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [userRole, setUserRole] = useState("");
+  const [showStatusUpdate, setShowStatusUpdate] = useState(false);
+  const [statusValue, setStatusValue] = useState("");
   const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
 
   const fetchReports = async () => {
@@ -27,7 +29,6 @@ const ReportsScreen = () => {
     try {
       const token = await AsyncStorage.getItem('token');
       const response = await axios.get(`${API_URL}/reports`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-      // Defensive: support both array and nested data
       let reportsArr = [];
       if (response.data && response.data.data && Array.isArray(response.data.data.reports)) {
         reportsArr = response.data.data.reports;
@@ -90,7 +91,8 @@ const ReportsScreen = () => {
   const pageSize = 15;
 
   const handleReportPress = (report) => {
-    fetchReportDetail(report.id);
+    // Navigate to the new report detail screen
+    router.push(`/report/${report.id}`);
   };
   
   const handleResolve = async () => {
@@ -116,56 +118,45 @@ const ReportsScreen = () => {
 
   const renderReportItem = ({ item }) => (
     <TouchableOpacity
-      style={[styles.reportCard, { borderColor: getStatusColor(item.status), borderWidth: 2 }]}
+      style={[
+        styles.reportCard,
+        {
+          borderColor: getStatusColor(item.status),
+          borderWidth: 2,
+          backgroundColor: '#f9f9f9',
+          margin: 4,
+          flex: 1,
+          minWidth: 0,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 4,
+          elevation: 2,
+        },
+      ]}
       onPress={() => handleReportPress(item)}
+      activeOpacity={0.85}
     >
       <Text style={styles.reportTitle}>{item.title}</Text>
-      <Text style={[styles.reportStatus, { color: getStatusColor(item.status) }]}>{item.status || (item.resolved_by ? 'Resolved' : 'Pending')}</Text>
+      <Text style={[
+        styles.reportStatus,
+        {
+          color: getStatusColor(item.status),
+          fontWeight: 'bold',
+          marginBottom: 4,
+          textTransform: 'capitalize',
+        },
+      ]}>
+        {item.status || (item.resolved_by ? 'Resolved' : 'Pending')}
+      </Text>
       <Text numberOfLines={2} style={styles.reportDesc}>{item.description}</Text>
     </TouchableOpacity>
   );
 
-  <Modal
-    visible={modalVisible}
-    animationType="slide"
-    transparent={true}
-    onRequestClose={() => setModalVisible(false)}
-  >
-    <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}>
-      <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '90%', maxHeight: '85%' }}>
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-          <TouchableOpacity style={{ alignSelf: 'flex-end', marginBottom: 8 }} onPress={() => setModalVisible(false)}>
-            <Ionicons name="close" size={28} color="#1976d2" />
-          </TouchableOpacity>
-          {detailLoading ? (
-            <ActivityIndicator size="large" color="#1976d2" />
-          ) : detailError ? (
-            <Text style={{ color: 'red', marginBottom: 8 }}>{detailError}</Text>
-          ) : selectedReport ? (
-            <View>
-              <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 8 }}>{selectedReport.title}</Text>
-              <Text style={{ fontWeight: 'bold', marginTop: 8 }}>Status: <Text style={{ fontWeight: 'normal' }}>{selectedReport.status || (selectedReport.resolved_by ? 'Resolved' : 'Pending')}</Text></Text>
-              <Text style={{ fontWeight: 'bold', marginTop: 8 }}>Description:</Text>
-              <Text style={{ marginBottom: 8 }}>{selectedReport.description}</Text>
-              {selectedReport.created_at && <Text style={{ fontWeight: 'bold', marginTop: 8 }}>Created: <Text style={{ fontWeight: 'normal' }}>{new Date(selectedReport.created_at).toLocaleString()}</Text></Text>}
-              {selectedReport.resolved_by && <Text style={{ fontWeight: 'bold', marginTop: 8 }}>Resolved By: <Text style={{ fontWeight: 'normal' }}>{selectedReport.resolved_by}</Text></Text>}
-              {userRole === 'admin' && !selectedReport.resolved_by && (
-                <View style={{ marginTop: 24 }}>
-                  <Button title={detailLoading ? 'Resolving...' : 'Resolve Report'} onPress={handleResolve} disabled={detailLoading} color="#388e3c" />
-                </View>
-              )}
-            </View>
-          ) : (
-            <Text>No report found.</Text>
-          )}
-        </ScrollView>
-      </View>
-    </View>
-  </Modal>
-
+  // Remove duplicate modal and ensure only one modal is rendered, using latest selectedReport data
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => router.back()} testID="back-btn">
+      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => router.replace('/(tabs)/index')} testID="back-btn">
         <Ionicons name="arrow-back" size={28} color="#1976d2" />
       </TouchableOpacity>
       <Text style={styles.title}>Reports</Text>
@@ -193,43 +184,6 @@ const ReportsScreen = () => {
         </View>
         </>
       )}
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}>
-          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '90%', maxHeight: '85%' }}>
-            <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-              <TouchableOpacity style={{ alignSelf: 'flex-end', marginBottom: 8 }} onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={28} color="#1976d2" />
-              </TouchableOpacity>
-              {detailLoading ? (
-                <ActivityIndicator size="large" color="#1976d2" />
-              ) : detailError ? (
-                <Text style={{ color: 'red', marginBottom: 8 }}>{detailError}</Text>
-              ) : selectedReport ? (
-                <View>
-                  <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 8 }}>{selectedReport.title}</Text>
-                  <Text style={{ fontWeight: 'bold', marginTop: 8 }}>Status: <Text style={{ fontWeight: 'normal' }}>{selectedReport.status || (selectedReport.resolved_by ? 'Resolved' : 'Pending')}</Text></Text>
-                  <Text style={{ fontWeight: 'bold', marginTop: 8 }}>Description:</Text>
-                  <Text style={{ marginBottom: 8 }}>{selectedReport.description}</Text>
-                  {selectedReport.created_at && <Text style={{ fontWeight: 'bold', marginTop: 8 }}>Created: <Text style={{ fontWeight: 'normal' }}>{new Date(selectedReport.created_at).toLocaleString()}</Text></Text>}
-                  {selectedReport.resolved_by && <Text style={{ fontWeight: 'bold', marginTop: 8 }}>Resolved By: <Text style={{ fontWeight: 'normal' }}>{selectedReport.resolved_by}</Text></Text>}
-                  {userRole === 'admin' && !selectedReport.resolved_by && (
-                    <View style={{ marginTop: 24 }}>
-                      <Button title={detailLoading ? 'Resolving...' : 'Resolve Report'} onPress={handleResolve} disabled={detailLoading} color="#388e3c" />
-                    </View>
-                  )}
-                </View>
-              ) : (
-                <Text>No report found.</Text>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 };
@@ -237,42 +191,41 @@ const ReportsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    padding: 16,
-    alignItems: 'stretch',
+    backgroundColor: '#f4f6fa',
+    paddingTop: 64,
+    paddingHorizontal: 8,
   },
   title: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 16,
     textAlign: 'center',
+    marginBottom: 16,
+    color: '#222',
   },
   reportCard: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 2, // default border width for status color
-    borderColor: '#e0e0e0', // fallback color
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 8,
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+    minHeight: 110,
+    flexBasis: '32%',
+    maxWidth: '32%',
   },
   reportTitle: {
-    fontWeight: 'bold',
     fontSize: 16,
+    fontWeight: 'bold',
     marginBottom: 4,
-    textAlign: 'center',
+    color: '#222',
   },
   reportStatus: {
-    color: '#1976d2',
-    fontWeight: 'bold',
-    marginBottom: 4,
-    textAlign: 'center',
+    fontSize: 14,
+    marginBottom: 2,
   },
-  reportDate: {
-    color: '#888',
-    fontSize: 12,
-    marginBottom: 4,
-    textAlign: 'center',
+  reportDesc: {
+    fontSize: 13,
+    color: '#444',
+    marginTop: 2,
   },
 });
  
@@ -280,18 +233,42 @@ const styles = StyleSheet.create({
 export default ReportsScreen;
 
 
-const getStatusColor = status => {
-  switch (status?.toLowerCase()) {
-    case 'pending':
-      return '#ff9800'; // orange
-    case 'in_progress':
-      return '#1976d2'; // blue
+const getStatusColor = (status) => {
+  switch ((status || '').toLowerCase()) {
     case 'resolved':
-      return '#43a047'; // green
-    case 'inactive':
-      return '#bdbdbd'; // gray
+      return '#388e3c'; // green
+    case 'pending':
+      return '#fbc02d'; // yellow
+    case 'repair':
+      return '#1976d2'; // blue
+    case 'decommissioned':
+      return '#d32f2f'; // red
     default:
-      return '#e0e0e0'; // default gray
+      return '#757575'; // grey
+  }
+};
+
+
+
+const handleUpdateStatus = async () => {
+  if (!selectedReport || !statusValue) return;
+  setDetailLoading(true);
+  setDetailError("");
+  try {
+    const token = await AsyncStorage.getItem('token');
+    await axios.patch(
+      `${API_URL}/reports/${selectedReport.id}`,
+      { status: statusValue },
+      { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+    );
+    fetchReports();
+    setShowStatusUpdate(false);
+    setModalVisible(false);
+    Alert.alert('Success', 'Status updated successfully');
+  } catch (err) {
+    setDetailError(err?.response?.data?.message || 'Failed to update status');
+  } finally {
+    setDetailLoading(false);
   }
 };
 

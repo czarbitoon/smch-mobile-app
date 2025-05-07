@@ -1,34 +1,62 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, Image, ScrollView } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { View, Text, ActivityIndicator, StyleSheet, Image, ScrollView, Button, Alert } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 export default function DeviceDetailScreen() {
   const { id } = useLocalSearchParams();
+  const router = useRouter();
   const [device, setDevice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [reportLoading, setReportLoading] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
-    axios.get(`${API_URL}/devices/${id}`)
-      .then(res => {
+    const fetchDevice = async () => {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        const res = await axios.get(`${API_URL}/devices/${id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
         if (isMounted) {
-          setDevice(res.data);
+          setDevice(res.data?.data || res.data);
           setLoading(false);
         }
-      })
-      .catch(err => {
+      } catch (err) {
         if (isMounted) {
           setError('Failed to load device details.');
           setLoading(false);
         }
-      });
+      }
+    };
+    fetchDevice();
     return () => { isMounted = false; };
   }, [id]);
+
+  const handleReportDevice = async () => {
+    if (!device) return;
+    setReportLoading(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      await axios.post(`${API_URL}/reports`, {
+        device_id: device.id,
+        description: `Reported from mobile app for device: ${device.name}`
+      }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      Alert.alert('Success', 'Report created successfully!');
+      router.push('/(tabs)/reports');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to create report.');
+    } finally {
+      setReportLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -57,11 +85,14 @@ export default function DeviceDetailScreen() {
         <Image source={{ uri: device.image_url }} style={styles.image} />
       ) : null}
       <Text style={styles.title}>{device.name}</Text>
-      <Text style={styles.label}>Office: <Text style={styles.value}>{device.office}</Text></Text>
-      <Text style={styles.label}>Type: <Text style={styles.value}>{device.type}</Text></Text>
-      <Text style={styles.label}>Status: <Text style={styles.value}>{device.status}</Text></Text>
+      <Text style={styles.label}>Office: <Text style={styles.value}>{device.office?.name || device.office || 'N/A'}</Text></Text>
+      <Text style={styles.label}>Type: <Text style={styles.value}>{device.type?.name || device.type || 'N/A'}</Text></Text>
+      <Text style={styles.label}>Status: <Text style={styles.value}>{device.status || 'N/A'}</Text></Text>
       <Text style={styles.label}>Description:</Text>
-      <Text style={styles.value}>{device.description || 'No description.'}</Text>
+      <Text style={styles.desc}>{device.description || 'No description.'}</Text>
+      <View style={{ marginTop: 24, width: '100%' }}>
+        <Button title={reportLoading ? 'Reporting...' : 'Report Device'} color="#d32f2f" onPress={handleReportDevice} disabled={reportLoading} />
+      </View>
     </ScrollView>
   );
 }

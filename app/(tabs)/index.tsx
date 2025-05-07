@@ -11,22 +11,26 @@ export default function HomeScreen() {
       const token = await AsyncStorage.getItem('token');
       const userRole = await AsyncStorage.getItem('user_role');
       if (!isMounted) return;
+      // Only redirect to login if token or userRole is missing, not on back navigation
       if (!token || !userRole) {
+        // Redirect to login if missing
         router.replace('/auth/login');
         return;
       }
       switch (userRole) {
         case 'user':
-          router.replace('/screens/userDashboard');
+          router.replace('/(tabs)/reports');
           break;
         case 'staff':
-          router.replace('/screens/staffDashboard');
+          router.replace('/(tabs)/reports');
           break;
         case 'admin':
-          router.replace('/screens/adminDashboard');
+          router.replace('/(tabs)/reports');
           break;
         default:
+          // Redirect to login for unknown roles
           router.replace('/auth/login');
+          break;
       }
     };
     checkRoleAndNavigate();
