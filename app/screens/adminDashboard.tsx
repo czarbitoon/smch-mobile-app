@@ -66,18 +66,18 @@ const AdminDashboard = () => {
         <Text style={styles.profileEmail}>{user.email}</Text>
       </View>
       <View style={styles.widgetRow}>
-        <View style={styles.widget}><Text style={styles.widgetTitle}>Users</Text><Text style={styles.widgetValue}>{loadingStats ? '...' : stats.users}</Text></View>
-        <View style={styles.widget}><Text style={styles.widgetTitle}>Devices</Text><Text style={styles.widgetValue}>{loadingStats ? '...' : stats.devices}</Text></View>
+        <View style={[styles.widget, styles.card, {backgroundColor: '#e3e7fa'}]}><Text style={styles.widgetTitle}>Users</Text><Text style={styles.widgetValue}>{loadingStats ? '...' : stats.users}</Text></View>
+        <View style={[styles.widget, styles.card, {backgroundColor: '#e3e7fa'}]}><Text style={styles.widgetTitle}>Devices</Text><Text style={styles.widgetValue}>{loadingStats ? '...' : stats.devices}</Text></View>
       </View>
       <View style={styles.widgetRow}>
-        <View style={styles.widget}><Text style={styles.widgetTitle}>Reports</Text><Text style={styles.widgetValue}>{loadingStats ? '...' : stats.reports}</Text></View>
-        <View style={styles.widget}><Text style={styles.widgetTitle}>Offices</Text><Text style={styles.widgetValue}>{loadingStats ? '...' : stats.offices}</Text></View>
+        <View style={[styles.widget, styles.card, {backgroundColor: '#e3e7fa'}]}><Text style={styles.widgetTitle}>Reports</Text><Text style={styles.widgetValue}>{loadingStats ? '...' : stats.reports}</Text></View>
+        <View style={[styles.widget, styles.card, {backgroundColor: '#e3e7fa'}]}><Text style={styles.widgetTitle}>Offices</Text><Text style={styles.widgetValue}>{loadingStats ? '...' : stats.offices}</Text></View>
       </View>
       <View style={styles.menuSection}>
-        <TouchableOpacity style={styles.menuButton} onPress={() => router.push('/(tabs)/devices')}><Text style={styles.menuButtonText}>Devices</Text></TouchableOpacity>
-        <TouchableOpacity style={styles.menuButton} onPress={() => router.push('/(tabs)/offices')}><Text style={styles.menuButtonText}>Offices</Text></TouchableOpacity>
-        <TouchableOpacity style={styles.menuButton} onPress={() => router.push('/(tabs)/reports')}><Text style={styles.menuButtonText}>Reports</Text></TouchableOpacity>
-        <TouchableOpacity style={styles.menuButton} onPress={() => router.push('/screens/userManagement')}><Text style={styles.menuButtonText}>Users</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.menuButton, styles.card]} onPress={() => router.push('/(tabs)/devices')}><Text style={styles.menuButtonText}>Devices</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.menuButton, styles.card]} onPress={() => router.push('/(tabs)/offices')}><Text style={styles.menuButtonText}>Offices</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.menuButton, styles.card]} onPress={() => router.push('/(tabs)/reports')}><Text style={styles.menuButtonText}>Reports</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.menuButton, styles.card]} onPress={() => router.push('/screens/userManagement')}><Text style={styles.menuButtonText}>Users</Text></TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -86,7 +86,7 @@ const AdminDashboard = () => {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f4f6fa',
     padding: 16,
     alignItems: 'center',
   },
@@ -100,6 +100,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
+    color: '#1976d2',
   },
   logoutButton: {
     backgroundColor: '#e53935',
@@ -113,16 +114,21 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     width: '100%',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderRadius: 18,
     padding: 24,
     alignItems: 'center',
     marginBottom: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#90caf9',
     marginBottom: 12,
   },
@@ -130,62 +136,70 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 4,
+    color: '#222',
   },
   profileEmail: {
     fontSize: 14,
     color: '#666',
   },
-  menuSection: {
-    width: '100%',
-    gap: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 12,
-  },
-  menuButton: {
-    flex: 1,
-    backgroundColor: '#1976d2',
-    paddingVertical: 18,
-    marginHorizontal: 6,
-    borderRadius: 12,
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#1976d2',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-  },
-  menuButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 18,
-    letterSpacing: 1,
-  },
   widgetRow: {
     width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 12,
+    gap: 12,
   },
   widget: {
     flex: 1,
-    backgroundColor: '#e3f2fd',
-    borderRadius: 10,
-    padding: 18,
     alignItems: 'center',
-    marginHorizontal: 6,
-    elevation: 1,
+    paddingVertical: 18,
+    borderRadius: 16,
+    marginHorizontal: 4,
   },
   widgetTitle: {
     fontSize: 16,
     color: '#1976d2',
     fontWeight: 'bold',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   widgetValue: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#222',
+  },
+  menuSection: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 24,
+    gap: 12,
+  },
+  menuButton: {
+    flexBasis: '48%',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingVertical: 24,
+    alignItems: 'center',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  menuButtonText: {
+    fontSize: 16,
+    color: '#1976d2',
+    fontWeight: 'bold',
+  },
+  card: {
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
 });
 

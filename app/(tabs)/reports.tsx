@@ -116,6 +116,52 @@ const ReportsScreen = () => {
     return reports.slice(start, start + pageSize);
   }, [reports, currentPage, pageSize]);
 
+  // Report detail modal
+  const renderReportModal = () => (
+    <Modal
+      visible={modalVisible && !!selectedReport}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setModalVisible(false)}
+    >
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}>
+        <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '90%', maxHeight: '90%' }}>
+          {selectedReport ? (
+            <ScrollView>
+              <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 8, color: '#1976d2' }}>{selectedReport.title}</Text>
+              <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>Status: <Text style={{ fontWeight: 'normal', color: getStatusColor(selectedReport.status) }}>{selectedReport.status || (selectedReport.resolved_by ? 'Resolved' : 'Pending')}</Text></Text>
+              <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>Description:</Text>
+              <Text style={{ color: '#444', fontSize: 15, marginBottom: 8 }}>{selectedReport.description}</Text>
+              {selectedReport.device && (
+                <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>Device: <Text style={{ fontWeight: 'normal', color: '#333' }}>{selectedReport.device.name || selectedReport.device_id}</Text></Text>
+              )}
+              {selectedReport.office && (
+                <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>Office: <Text style={{ fontWeight: 'normal', color: '#333' }}>{selectedReport.office.name || selectedReport.office_id}</Text></Text>
+              )}
+              {selectedReport.image_url && (
+                <View style={{ marginTop: 12 }}>
+                  <Text style={{ fontWeight: 'bold', fontSize: 16 }}>Image:</Text>
+                  <View style={{ alignItems: 'center', marginTop: 4 }}>
+                    <Image source={{ uri: selectedReport.image_url }} style={{ width: 220, height: 180, borderRadius: 8 }} resizeMode="cover" />
+                  </View>
+                </View>
+              )}
+              {selectedReport.created_at && <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>Created: <Text style={{ fontWeight: 'normal', color: '#333' }}>{new Date(selectedReport.created_at).toLocaleString()}</Text></Text>}
+              {selectedReport.resolved_by && (
+                <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>Resolved By: <Text style={{ fontWeight: 'normal', color: '#333' }}>{selectedReport.resolved_by_user?.name || selectedReport.resolved_by_user?.email || selectedReport.resolved_by || 'Unknown'}</Text></Text>
+              )}
+              {selectedReport.resolution_notes && (
+                <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>Resolution Notes: <Text style={{ fontWeight: 'normal', color: '#333' }}>{selectedReport.resolution_notes}</Text></Text>
+              )}
+              <View style={{ marginTop: 24, width: '100%' }}>
+                <Button title="Close" color="#757575" onPress={() => setModalVisible(false)} />
+              </View>
+            </ScrollView>
+          ) : null}
+        </View>
+      </View>
+    </Modal>
+  );
   const renderReportItem = ({ item }) => (
     <TouchableOpacity
       style={[
@@ -134,7 +180,7 @@ const ReportsScreen = () => {
           elevation: 2,
         },
       ]}
-      onPress={() => handleReportPress(item)}
+      onPress={() => { setSelectedReport(item); setModalVisible(true); }}
       activeOpacity={0.85}
     >
       <Text style={styles.reportTitle}>{item.title}</Text>
@@ -156,7 +202,22 @@ const ReportsScreen = () => {
   // Remove duplicate modal and ensure only one modal is rendered, using latest selectedReport data
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => router.replace('/(tabs)/index')} testID="back-btn">
+      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={async () => {
+        try {
+          const userRole = await AsyncStorage.getItem('user_role');
+          if (userRole === 'admin' || userRole === 'superadmin') {
+            router.replace('/screens/adminDashboard');
+          } else if (userRole === 'staff') {
+            router.replace('/screens/staffDashboard');
+          } else if (userRole === 'user') {
+            router.replace('/screens/userDashboard');
+          } else {
+            router.replace('/(tabs)/index');
+          }
+        } catch {
+          router.replace('/(tabs)/index');
+        }
+      }} testID="back-btn">
         <Ionicons name="arrow-back" size={28} color="#1976d2" />
       </TouchableOpacity>
       <Text style={styles.title}>Reports</Text>

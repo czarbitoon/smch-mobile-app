@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Button, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Button, ActivityIndicator, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2/api';
 
@@ -17,6 +18,8 @@ const Profile = () => {
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState('');
   const [editSuccess, setEditSuccess] = useState('');
+  const [profileImage, setProfileImage] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -24,9 +27,12 @@ const Profile = () => {
       try {
         const name = await AsyncStorage.getItem('user_name');
         const email = await AsyncStorage.getItem('user_email');
+        const image = await AsyncStorage.getItem('user_image');
         setUser({ name: name || '', email: email || '' });
+        setProfileImage(image || null);
       } catch (e) {
         setUser({ name: '', email: '' });
+        setProfileImage(null);
       } finally {
         setLoading(false);
       }
@@ -76,11 +82,58 @@ const Profile = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => router.back()} testID="back-btn">
+      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={async () => {
+        try {
+          const userRole = await AsyncStorage.getItem('user_role');
+          if (userRole === 'admin' || userRole === 'superadmin') {
+            router.replace('/screens/adminDashboard');
+          } else if (userRole === 'staff') {
+            router.replace('/screens/staffDashboard');
+          } else if (userRole === 'user') {
+            router.replace('/screens/userDashboard');
+          } else {
+            router.replace('/(tabs)/index');
+          }
+        } catch {
+          router.replace('/(tabs)/index');
+        }
+      }} testID="back-btn">
         <Ionicons name="arrow-back" size={28} color="#1976d2" />
       </TouchableOpacity>
       <View style={styles.profileCard}>
-        <View style={styles.avatar} />
+        <TouchableOpacity onPress={async () => {
+          let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+            base64: false
+          });
+          if (!result.canceled && result.assets && result.assets.length > 0) {
+            setUploading(true);
+            const asset = result.assets[0];
+            const formData = new FormData();
+            formData.append('photo', { uri: asset.uri, name: asset.fileName || 'profile.jpg', type: asset.type || 'image/jpeg' });
+            try {
+              const token = await AsyncStorage.getItem('token');
+              const res = await axios.post(`${API_URL}/profile/photo`, formData, { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` } });
+              setProfileImage(res.data.image_url);
+              await AsyncStorage.setItem('user_image', res.data.image_url);
+            } catch (e) {
+              // handle error
+            } finally {
+              setUploading(false);
+            }
+          }
+        }}>
+          {uploading ? (
+            <ActivityIndicator size="small" color="#1976d2" style={styles.avatar} />
+          ) : profileImage ? (
+            <Image source={{ uri: profileImage }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatar} />
+          )}
+        </TouchableOpacity>
         <Text style={styles.profileName}>{user.name}</Text>
         <Text style={styles.profileEmail}>{user.email}</Text>
         <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>

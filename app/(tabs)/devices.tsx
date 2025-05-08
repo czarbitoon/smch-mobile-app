@@ -181,7 +181,23 @@ const DevicesScreen = () => {
   return (
     <View style={{flex: 1}}>
       <View style={styles.container}>
-      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => router.replace('/(tabs)/index')} testID="back-btn">
+      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={async () => {
+        // Get user role from AsyncStorage and redirect accordingly
+        try {
+          const userRole = await AsyncStorage.getItem('user_role');
+          if (userRole === 'admin' || userRole === 'superadmin') {
+            router.replace('/screens/adminDashboard');
+          } else if (userRole === 'staff') {
+            router.replace('/screens/staffDashboard');
+          } else if (userRole === 'user') {
+            router.replace('/screens/userDashboard');
+          } else {
+            router.replace('/(tabs)/index'); // fallback
+          }
+        } catch {
+          router.replace('/(tabs)/index');
+        }
+      }} testID="back-btn">
         <Ionicons name="arrow-back" size={28} color="#1976d2" />
       </TouchableOpacity>
       <Text style={styles.title}>Devices</Text>
@@ -217,33 +233,42 @@ const DevicesScreen = () => {
           </Text>
         </TouchableOpacity>
         {/* Status Filter - use Picker instead of modal */}
-        <TouchableOpacity style={styles.filterButton} onPress={() => setShowStatusModal(true)}>
-          <Text style={styles.filterButtonText}>{statusOptions.find(opt => opt.value === statusFilter)?.label || 'Status'}</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+          <Text style={styles.filterLabel}>Status:</Text>
+          <TouchableOpacity
+            style={[styles.filterBtn, { flex: 1, marginLeft: 8 }]}
+            onPress={() => setShowStatusModal(true)}
+            testID="status-filter-btn"
+          >
+            <Text style={{ color: statusFilter ? '#1976d2' : '#888' }}>{statusOptions.find(opt => opt.value === statusFilter)?.label || 'All'}</Text>
+          </TouchableOpacity>
+        </View>
         <Modal
           visible={showStatusModal}
-          animationType="slide"
           transparent
+          animationType="fade"
           onRequestClose={() => setShowStatusModal(false)}
         >
-          <View style={styles.modalOverlay}>
+          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPressOut={() => setShowStatusModal(false)}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Select Status</Text>
-              {statusOptions.map(opt => (
+              {statusOptions.map(option => (
                 <TouchableOpacity
-                  key={opt.value}
-                  style={styles.modalOption}
+                  key={option.value}
+                  style={[
+                    styles.modalOption,
+                    statusFilter === option.value && styles.selectedOption
+                  ]}
                   onPress={() => {
-                    setStatusFilter(opt.value);
+                    setStatusFilter(option.value);
                     setShowStatusModal(false);
+                    setCurrentPage(1);
                   }}
                 >
-                  <Text style={{ color: statusFilter === opt.value ? '#1976d2' : '#333', fontWeight: statusFilter === opt.value ? 'bold' : 'normal' }}>{opt.label}</Text>
+                  <Text style={{ color: statusFilter === option.value ? '#1976d2' : '#333', fontWeight: statusFilter === option.value ? 'bold' : 'normal' }}>{option.label}</Text>
                 </TouchableOpacity>
               ))}
-              <Button title="Close" onPress={() => setShowStatusModal(false)} />
             </View>
-          </View>
+          </TouchableOpacity>
         </Modal>
       </View>
       <TextInput
@@ -260,41 +285,13 @@ const DevicesScreen = () => {
       ) : (
         <FlatList
           data={paginatedDevices}
-          keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.deviceCard}
-              onPress={() => router.push(`/device/${item.id}`)}
-              activeOpacity={0.85}
-            >
-              <View style={styles.deviceImageWrapper}>
-                {item.image_url ? (
-                  <Image
-                    source={{ uri: item.image_url }}
-                    style={styles.deviceImage}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={styles.deviceImagePlaceholder}>
-                    <Ionicons name="cube-outline" size={48} color="#bdbdbd" />
-                  </View>
-                )}
-              </View>
-              <View style={styles.deviceInfo}>
-                <Text style={styles.deviceName} numberOfLines={1}>{item.name}</Text>
-                <Text style={styles.deviceType} numberOfLines={1}>{item.type?.name || 'Unknown Type'}</Text>
-                <Text style={styles.deviceOffice} numberOfLines={1}>{item.office?.name || 'Unknown Office'}</Text>
-                <Text style={[styles.deviceStatus, { color: getStatusColor(item.status) }]}>{item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : 'Unknown'}</Text>
-              </View>
-            </TouchableOpacity>
-          )}
+          renderItem={renderDeviceCard}
+          keyExtractor={item => item.id?.toString()}
           numColumns={3}
-          columnWrapperStyle={{ justifyContent: 'space-between' }}
           contentContainerStyle={{ paddingBottom: 32 }}
-          ListEmptyComponent={() => (
+          ListEmptyComponent={loading ? null : (
             <Text style={{ textAlign: 'center', color: '#888', marginTop: 32 }}>No devices found.</Text>
           )}
-          showsVerticalScrollIndicator={false}
         />
       )}
       <View style={styles.paginationContainer}>
@@ -498,18 +495,15 @@ const styles = StyleSheet.create({
   },
   deviceCard: {
     flex: 1,
-    backgroundColor: '#fff',
+    minWidth: 120,
+    maxWidth: 160,
+    minHeight: 170,
     borderRadius: 16,
     padding: 12,
-    margin: 6,
+    margin: 10,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-    minWidth: 120,
-    maxWidth: 180,
+    justifyContent: 'center',
+    backgroundColor: '#fff',
   },
   deviceImageWrapper: {
     width: 90,
@@ -653,3 +647,82 @@ const DeviceCard = ({ device, onPress }) => {
     </TouchableOpacity>
   );
 };
+
+// Device card renderer
+const renderDeviceCard = ({ item }) => {
+  const statusColor = getStatusColor(item.status);
+  return (
+    <TouchableOpacity
+      style={[
+        styles.deviceCard,
+        {
+          borderColor: statusColor,
+          borderWidth: 2,
+          margin: 10,
+          backgroundColor: '#fff',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 4,
+          elevation: 2,
+        },
+      ]}
+      onPress={() => {
+        setSelectedDevice(item);
+        setShowDeviceModal(true);
+      }}
+      activeOpacity={0.85}
+    >
+      {item.image_url ? (
+        <Image
+          source={{ uri: item.image_url }}
+          style={{ width: 60, height: 60, alignSelf: 'center', marginBottom: 8, resizeMode: 'contain' }}
+        />
+      ) : (
+        <View style={{ width: 60, height: 60, alignSelf: 'center', marginBottom: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 12 }}>
+          <IconSymbol name="desktopcomputer" size={40} color="#bdbdbd" />
+        </View>
+      )}
+      <Text style={{ fontWeight: 'bold', fontSize: 16, textAlign: 'center', marginBottom: 2 }}>{item.name || 'Unnamed Device'}</Text>
+      <Text style={{ fontSize: 13, color: statusColor, fontWeight: 'bold', textAlign: 'center', marginBottom: 2 }}>Status: {item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : 'Unknown'}</Text>
+      <Text style={{ fontSize: 13, color: '#444', textAlign: 'center', marginBottom: 2 }}>Type: {item.type?.name || item.type_name || 'N/A'}</Text>
+      <Text style={{ fontSize: 13, color: '#444', textAlign: 'center', marginBottom: 2 }}>Office: {item.office?.name || item.office_name || 'N/A'}</Text>
+    </TouchableOpacity>
+  );
+};
+
+// Device detail modal
+const renderDeviceModal = () => (
+  <Modal
+    visible={showDeviceModal && !!selectedDevice}
+    animationType="slide"
+    transparent={true}
+    onRequestClose={() => setShowDeviceModal(false)}
+  >
+    <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '90%', maxHeight: '90%' }}>
+        {selectedDevice ? (
+          <ScrollView>
+            <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 8, color: '#1976d2' }}>{selectedDevice.name}</Text>
+            <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>Status: <Text style={{ fontWeight: 'normal', color: getStatusColor(selectedDevice.status) }}>{selectedDevice.status}</Text></Text>
+            <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>Type: <Text style={{ fontWeight: 'normal', color: '#333' }}>{selectedDevice.type?.name || selectedDevice.device_type_id}</Text></Text>
+            <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>Office: <Text style={{ fontWeight: 'normal', color: '#333' }}>{selectedDevice.office?.name || selectedDevice.office_id}</Text></Text>
+            {selectedDevice.image_url && (
+              <View style={{ marginTop: 12 }}>
+                <Text style={{ fontWeight: 'bold', fontSize: 16 }}>Image:</Text>
+                <View style={{ alignItems: 'center', marginTop: 4 }}>
+                  <Image source={{ uri: selectedDevice.image_url }} style={{ width: 220, height: 180, borderRadius: 8 }} resizeMode="cover" />
+                </View>
+              </View>
+            )}
+            <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>Description:</Text>
+            <Text style={{ color: '#444', fontSize: 15, marginBottom: 8 }}>{selectedDevice.description || 'No description.'}</Text>
+            <View style={{ marginTop: 24, width: '100%' }}>
+              <Button title="Close" color="#757575" onPress={() => setShowDeviceModal(false)} />
+            </View>
+          </ScrollView>
+        ) : null}
+      </View>
+    </View>
+  </Modal>
+);

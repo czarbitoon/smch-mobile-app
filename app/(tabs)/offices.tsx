@@ -76,9 +76,24 @@ const OfficesScreen = () => {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => router.back()} testID="back-btn">
-        <Ionicons name="arrow-back" size={28} color="#1976d2" />
-      </TouchableOpacity>
+    <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={async () => {
+      try {
+        const userRole = await AsyncStorage.getItem('user_role');
+        if (userRole === 'admin' || userRole === 'superadmin') {
+          router.replace('/screens/adminDashboard');
+        } else if (userRole === 'staff') {
+          router.replace('/screens/staffDashboard');
+        } else if (userRole === 'user') {
+          router.replace('/screens/userDashboard');
+        } else {
+          router.replace('/(tabs)/index');
+        }
+      } catch {
+        router.replace('/(tabs)/index');
+      }
+    }} testID="back-btn">
+      <Ionicons name="arrow-back" size={28} color="#1976d2" />
+    </TouchableOpacity>
       <Text style={styles.title}>Offices</Text>
       {loading && <ActivityIndicator size="large" color="#007bff" />}
       {error && <Text style={{ color: 'red', marginBottom: 16 }}>{error}</Text>}

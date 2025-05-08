@@ -16,14 +16,35 @@ const UserManagement = () => {
     setLoading(true);
     setError("");
     try {
-      
       const token = await AsyncStorage.getItem("token");
+      const userRole = await AsyncStorage.getItem("user_role");
+      if (!token) {
+        setError("Unauthorized. Please login again.");
+        setUsers([]);
+        setLoading(false);
+        return;
+      }
+      if (userRole !== "admin" && userRole !== "staff" && userRole !== "superadmin") {
+        setError("Forbidden. You do not have access to user management.");
+        setUsers([]);
+        setLoading(false);
+        return;
+      }
       const res = await axios.get(`${API_URL}/users`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUsers(res.data.data || res.data);
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to fetch users.");
+      if (err?.response?.status === 401) {
+        setError("Unauthorized. Please login again.");
+        setUsers([]);
+        await AsyncStorage.removeItem("token");
+      } else if (err?.response?.status === 403) {
+        setError("Forbidden. You do not have access to user management.");
+        setUsers([]);
+      } else {
+        setError(err.response?.data?.error || "Failed to fetch users.");
+      }
     } finally {
       setLoading(false);
     }
@@ -36,6 +57,10 @@ const UserManagement = () => {
   const handleRoleChange = async (id, newRole) => {
     try {
       const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        Alert.alert("Error", "Unauthorized. Please login again.");
+        return;
+      }
       await axios.put(
         `${API_URL}/users/${id}/role`,
         { role: newRole },
@@ -43,13 +68,23 @@ const UserManagement = () => {
       );
       fetchUsers();
     } catch (err) {
-      Alert.alert("Error", err.response?.data?.error || "Failed to change role.");
+      if (err?.response?.status === 401) {
+        Alert.alert("Error", "Unauthorized. Please login again.");
+      } else if (err?.response?.status === 403) {
+        Alert.alert("Error", "Forbidden. You do not have access to change roles.");
+      } else {
+        Alert.alert("Error", err.response?.data?.error || "Failed to change role.");
+      }
     }
   };
 
   const handleDeactivate = async (id) => {
     try {
       const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        Alert.alert("Error", "Unauthorized. Please login again.");
+        return;
+      }
       await axios.put(
         `${API_URL}/users/${id}/deactivate`,
         {},
@@ -57,7 +92,13 @@ const UserManagement = () => {
       );
       fetchUsers();
     } catch (err) {
-      Alert.alert("Error", err.response?.data?.error || "Failed to deactivate user.");
+      if (err?.response?.status === 401) {
+        Alert.alert("Error", "Unauthorized. Please login again.");
+      } else if (err?.response?.status === 403) {
+        Alert.alert("Error", "Forbidden. You do not have access to deactivate users.");
+      } else {
+        Alert.alert("Error", err.response?.data?.error || "Failed to deactivate user.");
+      }
     }
   };
 
@@ -87,20 +128,24 @@ const UserManagement = () => {
   if (error) return <Text style={styles.error}>{error}</Text>;
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => router.back()} testID="back-btn">
-        <Ionicons name="arrow-back" size={28} color="#1976d2" />
-      </TouchableOpacity>
-      <Text style={styles.title}>User Management</Text>
-      <FlatList
-        data={users}
-        keyExtractor={(item) => String(item.id)}
-        renderItem={renderItem}
-        refreshing={refreshing}
-        onRefresh={fetchUsers}
-        ListEmptyComponent={<Text>No users found.</Text>}
-      />
-    </View>
+    <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={async () => {
+      try {
+        const userRole = await AsyncStorage.getItem('user_role');
+        if (userRole === 'admin' || userRole === 'superadmin') {
+          router.replace('/screens/adminDashboard');
+        } else if (userRole === 'staff') {
+          router.replace('/screens/staffDashboard');
+        } else if (userRole === 'user') {
+          router.replace('/screens/userDashboard');
+        } else {
+          router.replace('/(tabs)/index');
+        }
+      } catch {
+        router.replace('/(tabs)/index');
+      }
+    }} testID="back-btn">
+      <Ionicons name="arrow-back" size={28} color="#1976d2" />
+    </TouchableOpacity>
   );
 };
 
