@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Button, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Button, Alert, Platform } from 'react-native';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
+import * as Notifications from 'expo-notifications';
+import Pusher from 'pusher-js';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -32,7 +34,60 @@ const NotificationsScreen = () => {
   };
 
   useEffect(() => {
-    fetchNotifications();
+    // Real-time notifications with Pusher
+    const pusher = new Pusher(process.env.EXPO_PUBLIC_PUSHER_APP_KEY, {
+      cluster: process.env.EXPO_PUBLIC_PUSHER_APP_CLUSTER,
+      forceTLS: true,
+      encrypted: true,
+    });
+    // Request notification permissions
+    (async () => {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      if (finalStatus !== 'granted') {
+        Alert.alert('Failed to get push token for push notification!');
+        return;
+      }
+      if (Platform.OS === 'android') {
+        Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF231F7C',
+        });
+      }
+    })();
+
+    // Handle notifications that are received while the app is foregrounded
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+
+    const channel = pusher.subscribe('reports');
+    channel.bind('App\\Events\\ReportSubmitted', async function(data) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'New Report Submitted',
+          body: data.report.title || 'A new report was created',
+          sound: 'default',
+        },
+        trigger: null, // Present immediately
+      });
+      fetchNotifications();
+    });
+    return () => {
+      channel.unbind_all();
+      channel.unsubscribe();
+      pusher.disconnect();
+    };
   }, []);
 
   const handleClearAll = () => {
