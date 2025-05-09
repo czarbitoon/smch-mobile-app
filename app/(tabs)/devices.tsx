@@ -178,41 +178,6 @@ const DevicesScreen = () => {
     { label: "Under Repair", value: "repair" },
     { label: "Decommissioned", value: "decommissioned" }
   ];
-
-  // Render device card function
-  const renderDeviceCard = ({ item }) => (
-    <TouchableOpacity
-      style={{
-        backgroundColor: '#f5f5f5',
-        borderRadius: 12,
-        padding: 16,
-        margin: 8,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-        elevation: 2,
-        flex: 1,
-        minWidth: 0
-      }}
-      onPress={() => {
-        setSelectedDevice(item);
-        setShowDeviceModal(true);
-      }}
-      activeOpacity={0.85}
-    >
-      {item.image_url ? (
-        <Image source={{ uri: item.image_url }} style={{ width: 80, height: 80, borderRadius: 8, marginBottom: 8 }} resizeMode="cover" />
-      ) : (
-        <View style={{ width: 80, height: 80, borderRadius: 8, backgroundColor: '#e3e3e3', marginBottom: 8 }} />
-      )}
-      <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#1976d2', marginBottom: 4 }}>{item.name}</Text>
-      <Text style={{ color: '#757575', fontSize: 14 }}>{item.type?.name || 'Unknown Type'}</Text>
-      <Text style={{ color: '#757575', fontSize: 13 }}>{item.office?.name || 'Unknown Office'}</Text>
-      <Text style={{ color: getStatusColor(item.status), fontWeight: 'bold', marginTop: 4, textTransform: 'capitalize' }}>{item.status}</Text>
-    </TouchableOpacity>
-  );
   return (
     <View style={{flex: 1}}>
       <View style={styles.container}>
@@ -321,8 +286,8 @@ const DevicesScreen = () => {
         <FlatList
           data={paginatedDevices}
           renderItem={renderDeviceCard}
-          keyExtractor={(item) => item.id?.toString()}
-          numColumns={2}
+          keyExtractor={item => item.id?.toString()}
+          numColumns={3}
           contentContainerStyle={{ paddingBottom: 32 }}
           ListEmptyComponent={loading ? null : (
             <Text style={{ textAlign: 'center', color: '#888', marginTop: 32 }}>No devices found.</Text>
@@ -684,31 +649,47 @@ const DeviceCard = ({ device, onPress }) => {
 };
 
 // Device card renderer
-const renderDeviceCard = ({ item }) => (
-  <TouchableOpacity
-    style={styles.deviceCard}
-    onPress={() => {
-      setSelectedDevice(item);
-      setShowDeviceModal(true);
-    }}
-    activeOpacity={0.85}
-  >
-    <View style={{ alignItems: 'center' }}>
+const renderDeviceCard = ({ item }) => {
+  const statusColor = getStatusColor(item.status);
+  return (
+    <TouchableOpacity
+      style={[
+        styles.deviceCard,
+        {
+          borderColor: statusColor,
+          borderWidth: 2,
+          margin: 10,
+          backgroundColor: '#fff',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 4,
+          elevation: 2,
+        },
+      ]}
+      onPress={() => {
+        setSelectedDevice(item);
+        setShowDeviceModal(true);
+      }}
+      activeOpacity={0.85}
+    >
       {item.image_url ? (
-        <Image source={{ uri: item.image_url }} style={styles.deviceImage} />
+        <Image
+          source={{ uri: item.image_url }}
+          style={{ width: 60, height: 60, alignSelf: 'center', marginBottom: 8, resizeMode: 'contain' }}
+        />
       ) : (
-        <View style={[styles.deviceImage, { backgroundColor: '#e0e0e0' }]} />
+        <View style={{ width: 60, height: 60, alignSelf: 'center', marginBottom: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 12 }}>
+          <IconSymbol name="desktopcomputer" size={40} color="#bdbdbd" />
+        </View>
       )}
-      <Text style={styles.deviceName}>{item.name}</Text>
-      <Text style={styles.deviceStatus}>
-        Status: <Text style={{ color: getStatusColor(item.status) }}>{item.status}</Text>
-      </Text>
-      {item.office && (
-        <Text style={styles.deviceOffice}>Office: {item.office.name}</Text>
-      )}
-    </View>
-  </TouchableOpacity>
-);
+      <Text style={{ fontWeight: 'bold', fontSize: 16, textAlign: 'center', marginBottom: 2 }}>{item.name || 'Unnamed Device'}</Text>
+      <Text style={{ fontSize: 13, color: statusColor, fontWeight: 'bold', textAlign: 'center', marginBottom: 2 }}>Status: {item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : 'Unknown'}</Text>
+      <Text style={{ fontSize: 13, color: '#444', textAlign: 'center', marginBottom: 2 }}>Type: {item.type?.name || item.type_name || 'N/A'}</Text>
+      <Text style={{ fontSize: 13, color: '#444', textAlign: 'center', marginBottom: 2 }}>Office: {item.office?.name || item.office_name || 'N/A'}</Text>
+    </TouchableOpacity>
+  );
+};
 
 // Device detail modal
 const renderDeviceModal = () => (
