@@ -47,19 +47,6 @@ export default function ReportCreate() {
         router.replace('/auth/login');
         return;
       }
-      const formData = new FormData();
-      formData.append('title', `Issue Report - ${deviceName || 'Device'}`);
-      formData.append('device_id', deviceId);
-      formData.append('description', description);
-      formData.append('priority', priority);
-      formData.append('status', 'pending');
-      if (image) {
-        formData.append('report_image', {
-          uri: image.uri,
-          name: image.fileName || 'photo.jpg',
-          type: image.type ? image.type : (image.uri && image.uri.endsWith('.png') ? 'image/png' : 'image/jpeg'),
-        });
-      }
       const getApiUrl = () => {
         if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
         if (Platform.OS === 'android') return 'http://10.0.2.2/api';
@@ -67,7 +54,35 @@ export default function ReportCreate() {
         if (Platform.OS === 'web') return 'http://localhost:8000/api';
         return 'http://192.168.1.100/api';
       };
-      console.log('Submitting report:', { deviceId, description, image, priority, api: getApiUrl() });
+      let reportImagePath = null;
+      if (image) {
+        // Upload image to backend first, get path
+        const imgForm = new FormData();
+        imgForm.append('image', {
+          uri: image.uri,
+          name: image.fileName || 'photo.jpg',
+          type: image.type ? image.type : (image.uri && image.uri.endsWith('.png') ? 'image/png' : 'image/jpeg'),
+        });
+        imgForm.append('folder', 'report_images');
+        const imgRes = await axios.post(`${getApiUrl()}/images/upload`, imgForm, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (imgRes.data && imgRes.data.path) {
+          reportImagePath = imgRes.data.path;
+        }
+      }
+      const formData = new FormData();
+      formData.append('title', `Issue Report - ${deviceName || 'Device'}`);
+      formData.append('device_id', deviceId);
+      formData.append('description', description);
+      formData.append('priority', priority);
+      formData.append('status', 'pending');
+      if (reportImagePath) {
+        formData.append('report_image', reportImagePath);
+      }
       const response = await axios.post(`${getApiUrl()}/reports`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',

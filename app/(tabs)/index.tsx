@@ -9,23 +9,33 @@ export default function HomeScreen() {
   useEffect(() => {
     let isMounted = true;
     const checkRoleAndNavigate = async () => {
-      const token = await AsyncStorage.getItem('token');
-      const userRole = await AsyncStorage.getItem('user_role');
-      if (!isMounted) return;
-      if (!token || !userRole) {
-        router.replace('/auth/login');
-        return;
-      }
-      switch (userRole) {
-        case 'user':
-        case 'staff':
-        case 'admin'|| 'super_admin':
-
-          router.replace('/(tabs)/reports');
-          break;
-        default:
+      try {
+        const token = await AsyncStorage.getItem('token');
+        const userRole = await AsyncStorage.getItem('user_role');
+        if (!isMounted) return;
+        if (!token || !userRole) {
           router.replace('/auth/login');
-          break;
+          return;
+        }
+        switch (userRole) {
+          case 'user':
+            router.replace('/screens/userDashboard');
+            break;
+          case 'staff':
+            router.replace('/screens/staffDashboard');
+            break;
+          case 'admin':
+            router.replace('/screens/adminDashboard');
+            break;
+          case 'superadmin':
+            router.replace('/screens/adminDashboard');
+            break;
+          default:
+            router.replace('/auth/login');
+            break;
+        }
+      } catch (err) {
+        router.replace('/auth/login');
       }
     };
     checkRoleAndNavigate().finally(() => { if (isMounted) setLoading(false); });

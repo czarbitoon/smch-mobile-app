@@ -11,7 +11,13 @@ export default function NotFoundScreen() {
     <>
       <Stack.Screen options={{ title: 'Oops!' }} />
       <ThemedView style={styles.container}>
-        <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => router?.back ? router.back() : null} testID="back-btn">
+        <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={() => {
+          if (router?.canGoBack && router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/');
+          }
+        }} testID="back-btn">
           <Ionicons name="arrow-back" size={28} color="#1976d2" />
         </TouchableOpacity>
         <ThemedText type="title">This screen doesn't exist.</ThemedText>
