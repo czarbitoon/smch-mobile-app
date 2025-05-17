@@ -1,70 +1,66 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Image, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as ImagePicker from 'expo-image-picker';
+import * as ImagePicker from 'react-native-image-picker';
 import axios from 'axios';
+import { Ionicons } from '@expo/vector-icons';
+import useUserRole from './utils/useUserRole';
+import { Snackbar } from 'react-native-paper';
 
 export default function ReportCreate() {
   const router = useRouter();
+  const userRole = useUserRole();
   const { deviceId, deviceName } = useLocalSearchParams();
   const [description, setDescription] = useState('');
   const [image, setImage] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [userRole, setUserRole] = useState('');
   const [priority, setPriority] = useState('Low');
+  const [error, setError] = useState('');
+  const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'info' });
 
-  useEffect(() => {
-    AsyncStorage.getItem('user_role').then(role => {
-      if (role) setUserRole(role);
-    });
-  }, []);
+  const API_URL = process.env.EXPO_PUBLIC_API_URL || (Platform.OS === 'android' ? 'http://10.0.2.2/api' : 'http://192.168.1.100/api');
 
-  const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.7,
+  const handlePickImage = async () => {
+    ImagePicker.launchImageLibrary({ mediaType: 'photo', quality: 0.7 }, (response) => {
+      if (response.didCancel) return;
+      if (response.errorCode) {
+        Alert.alert('Image Picker Error', response.errorMessage || 'Unknown error');
+        return;
+      }
+      if (response.assets && response.assets.length > 0) {
+        setImage(response.assets[0]);
+      }
     });
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setImage(result.assets[0]);
-    }
   };
-
 
   const handleSubmit = async () => {
     if (!description) {
-      Alert.alert('Validation', 'Description is required');
+      setError('Description is required');
+      setSnackbar({ visible: true, message: 'Description is required', type: 'error' });
       return;
     }
     setUploading(true);
+    setError('');
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
-        Alert.alert('Unauthorized', 'Session expired. Please login again.');
+        setError('Unauthorized. Please login again.');
+        setSnackbar({ visible: true, message: 'Session expired. Please login again.', type: 'error' });
         setUploading(false);
         router.replace('/auth/login');
         return;
       }
-      const getApiUrl = () => {
-        if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
-        if (Platform.OS === 'android') return 'http://10.0.2.2/api';
-        if (Platform.OS === 'ios') return 'http://127.0.0.1/api';
-        if (Platform.OS === 'web') return 'http://localhost:8000/api';
-        return 'http://192.168.1.100/api';
-      };
       let reportImagePath = null;
       if (image) {
-        // Upload image to backend first, get path
         const imgForm = new FormData();
         imgForm.append('image', {
           uri: image.uri,
           name: image.fileName || 'photo.jpg',
-          type: image.type ? image.type : (image.uri && image.uri.endsWith('.png') ? 'image/png' : 'image/jpeg'),
+          type: image.type || 'image/jpeg',
         });
         imgForm.append('folder', 'report_images');
-        const imgRes = await axios.post(`${getApiUrl()}/images/upload`, imgForm, {
+        const imgRes = await axios.post(`${API_URL}/images/upload`, imgForm, {
           headers: {
             'Content-Type': 'multipart/form-data',
             'Authorization': `Bearer ${token}`,
@@ -83,18 +79,17 @@ export default function ReportCreate() {
       if (reportImagePath) {
         formData.append('report_image', reportImagePath);
       }
-      const response = await axios.post(`${getApiUrl()}/reports`, formData, {
+      await axios.post(`${API_URL}/reports`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`,
         },
       });
-      console.log('Report submit response:', response.data);
-      Alert.alert('Success', 'Report submitted successfully');
-      router.replace('/(tabs)/reports');
+      setSnackbar({ visible: true, message: 'Report submitted successfully', type: 'success' });
+      setTimeout(() => router.replace('/(tabs)/reports'), 1200);
     } catch (err) {
-      console.error('Report submit error:', err, err?.response?.data);
-      Alert.alert('Error', 'Failed to submit report: ' + (err?.response?.data?.message || err.message || 'Unknown error'));
+      setError(err?.response?.data?.message || err.message || 'Unknown error');
+      setSnackbar({ visible: true, message: 'Failed to submit report: ' + (err?.response?.data?.message || err.message || 'Unknown error'), type: 'error' });
     } finally {
       setUploading(false);
     }
@@ -106,7 +101,27 @@ export default function ReportCreate() {
 
   return (
     <View style={styles.container}>
+      <View>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={async () => {
+          if (userRole === 'admin' || userRole === 'superadmin') {
+            router.replace('/screens/adminDashboard');
+          } else if (userRole === 'staff') {
+            router.replace('/screens/staffDashboard');
+          } else if (userRole === 'user') {
+            router.replace('/screens/userDashboard');
+          } else {
+            router.replace('/(tabs)/index');
+          }
+        }}
+        testID="back-btn"
+      >
+        <Ionicons name="arrow-back" size={28} color="#1976d2" />
+      </TouchableOpacity>
+    </View>
       <Text style={styles.title}>Report Issue for {deviceName}</Text>
+      {error ? <Text style={{color:'red',marginBottom:8}}>{error}</Text> : null}
       <TextInput
         style={styles.input}
         placeholder="Describe the issue..."
@@ -136,7 +151,7 @@ export default function ReportCreate() {
           ))}
         </View>
       </View>
-      <TouchableOpacity style={styles.imagePicker} onPress={pickImage} testID="pick-image-btn">
+      <TouchableOpacity style={styles.imagePicker} onPress={handlePickImage} testID="pick-image-btn">
         {image ? (
           <Image source={{ uri: image.uri }} style={styles.imagePreview} />
         ) : (
@@ -148,6 +163,24 @@ export default function ReportCreate() {
         <TouchableOpacity style={styles.editBtn} onPress={handleEditDevice} testID="edit-device-btn">
           <Text style={styles.editBtnText}>Edit Device</Text>
         </TouchableOpacity>
+      )}
+      {snackbar.visible && (
+        <View style={{
+          position: 'absolute',
+          bottom: 32,
+          left: 16,
+          right: 16,
+          backgroundColor: snackbar.type === 'error' ? '#d32f2f' : '#388e3c',
+          padding: 16,
+          borderRadius: 8,
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>{snackbar.message}</Text>
+          <TouchableOpacity onPress={() => setSnackbar({ ...snackbar, visible: false })} style={{ marginTop: 8 }}>
+            <Text style={{ color: '#fff', textDecorationLine: 'underline' }}>Dismiss</Text>
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   );
@@ -169,15 +202,20 @@ const styles = StyleSheet.create({
   input: {
     borderColor: '#ccc',
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    padding: 14,
     marginBottom: 16,
-    minHeight: 80,
-    textAlignVertical: 'top',
+    fontSize: 16,
+    backgroundColor: '#f7f8fa',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
   imagePicker: {
     borderWidth: 1,
-    borderColor: '#1976d2',
+    borderColor: '#ccc',
     borderRadius: 8,
     padding: 12,
     alignItems: 'center',
@@ -190,9 +228,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   imagePreview: {
-    width: 100,
-    height: 100,
+    width: 120,
+    height: 120,
     borderRadius: 8,
+    resizeMode: 'cover',
+  },
+  backButton: {
+    marginBottom: 16,
+    alignSelf: 'flex-start',
   },
   editBtn: {
     marginTop: 24,
@@ -205,5 +248,10 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  error: {
+    color: 'red',
+    marginBottom: 8,
+    textAlign: 'center',
   },
 });

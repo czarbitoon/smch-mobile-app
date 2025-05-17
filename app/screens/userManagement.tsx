@@ -4,8 +4,10 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import useUserRole from '../utils/useUserRole';
 
 const UserManagement = () => {
+  const userRole = useUserRole();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -129,18 +131,13 @@ const UserManagement = () => {
 
   return (
     <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={async () => {
-      try {
-        const userRole = await AsyncStorage.getItem('user_role');
-        if (userRole === 'admin' || userRole === 'superadmin') {
-          router.replace('/screens/adminDashboard');
-        } else if (userRole === 'staff') {
-          router.replace('/screens/staffDashboard');
-        } else if (userRole === 'user') {
-          router.replace('/screens/userDashboard');
-        } else {
-          router.replace('/(tabs)/index');
-        }
-      } catch {
+      if (userRole === 'admin' || userRole === 'superadmin') {
+        router.replace('/screens/adminDashboard');
+      } else if (userRole === 'staff') {
+        router.replace('/screens/staffDashboard');
+      } else if (userRole === 'user') {
+        router.replace('/screens/userDashboard');
+      } else {
         router.replace('/(tabs)/index');
       }
     }} testID="back-btn">

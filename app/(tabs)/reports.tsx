@@ -7,9 +7,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { Modal, ScrollView } from 'react-native';
+import useUserRole from '../utils/useUserRole';
 
 const ReportsScreen = () => {
   const router = useRouter();
+  const userRole = useUserRole();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -18,7 +20,6 @@ const ReportsScreen = () => {
   const [selectedReport, setSelectedReport] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
-  const [userRole, setUserRole] = useState("");
   const [showStatusUpdate, setShowStatusUpdate] = useState(false);
   const [statusValue, setStatusValue] = useState("");
   const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
@@ -82,7 +83,7 @@ const ReportsScreen = () => {
       const userStr = await AsyncStorage.getItem('user');
       if (userStr) {
         const user = JSON.parse(userStr);
-        setUserRole(user?.role ?? "");
+        // Removed: setUserRole(user?.role ?? "");
       }
     } catch {}
   };
@@ -91,8 +92,8 @@ const ReportsScreen = () => {
   const pageSize = 15;
 
   const handleReportPress = (report) => {
-    // Navigate to the new report detail screen
-    router.push(`/report/${report.id}`);
+    setSelectedReport(report);
+    setModalVisible(true);
   };
   
   const handleResolve = async () => {
@@ -153,6 +154,44 @@ const ReportsScreen = () => {
               {selectedReport.resolution_notes && (
                 <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>Resolution Notes: <Text style={{ fontWeight: 'normal', color: '#333' }}>{selectedReport.resolution_notes}</Text></Text>
               )}
+              {['admin','superadmin'].includes(userRole) && (
+                <View style={{ marginTop: 24 }}>
+                  <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>Update Status:</Text>
+                  <View style={{ borderWidth: 1, borderColor: '#bbb', borderRadius: 8, marginBottom: 12 }}>
+                    <Picker
+                      selectedValue={statusValue || selectedReport.status}
+                      onValueChange={setStatusValue}
+                      style={{ height: 44 }}
+                    >
+                      <Picker.Item label="Pending" value="pending" />
+                      <Picker.Item label="Resolved" value="resolved" />
+                      <Picker.Item label="Repair" value="repair" />
+                      <Picker.Item label="Decommissioned" value="decommissioned" />
+                    </Picker>
+                  </View>
+                  <Button
+                    title={detailLoading ? 'Updating...' : 'Update Status'}
+                    color="#1976d2"
+                    onPress={async () => {
+                      if (!statusValue || statusValue === selectedReport.status) return;
+                      setDetailLoading(true);
+                      setDetailError("");
+                      try {
+                        const token = await AsyncStorage.getItem('token');
+                        await axios.patch(`${API_URL}/reports/${selectedReport.id}/status`, { status: statusValue }, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+                        fetchReports();
+                        setModalVisible(false);
+                        Alert.alert('Success', 'Status updated successfully');
+                      } catch (err) {
+                        setDetailError(err?.response?.data?.message || 'Failed to update status');
+                      } finally {
+                        setDetailLoading(false);
+                      }
+                    }}
+                    disabled={detailLoading || !statusValue || statusValue === selectedReport.status}
+                  />
+                </View>
+              )}
               <View style={{ marginTop: 24, width: '100%' }}>
                 <Button title="Close" color="#757575" onPress={() => setModalVisible(false)} />
               </View>
@@ -180,7 +219,7 @@ const ReportsScreen = () => {
           elevation: 2,
         },
       ]}
-      onPress={() => { setSelectedReport(item); setModalVisible(true); }}
+      onPress={() => handleReportPress(item)}
       activeOpacity={0.85}
     >
       <Text style={styles.reportTitle}>{item.title}</Text>
@@ -203,18 +242,13 @@ const ReportsScreen = () => {
   return (
     <View style={styles.container}>
       <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={async () => {
-        try {
-          const userRole = await AsyncStorage.getItem('user_role');
-          if (userRole === 'admin' || userRole === 'superadmin') {
-            router.replace('/screens/adminDashboard');
-          } else if (userRole === 'staff') {
-            router.replace('/screens/staffDashboard');
-          } else if (userRole === 'user') {
-            router.replace('/screens/userDashboard');
-          } else {
-            router.replace('/(tabs)/index');
-          }
-        } catch {
+        if (userRole === 'admin' || userRole === 'superadmin') {
+          router.replace('/screens/adminDashboard');
+        } else if (userRole === 'staff') {
+          router.replace('/screens/staffDashboard');
+        } else if (userRole === 'user') {
+          router.replace('/screens/userDashboard');
+        } else {
           router.replace('/(tabs)/index');
         }
       }} testID="back-btn">
@@ -245,6 +279,7 @@ const ReportsScreen = () => {
         </View>
         </>
       )}
+      {renderReportModal()}
     </View>
   );
 };

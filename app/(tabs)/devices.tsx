@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import useUserRole from '../utils/useUserRole';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -68,7 +69,7 @@ const DevicesScreen = () => {
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState("");
   // Admin role state
-  const [userRole, setUserRole] = useState("");
+  const userRole = useUserRole();
   // Refresh state for FlatList
   const [refreshing, setRefreshing] = useState(false);
 
@@ -127,17 +128,21 @@ const DevicesScreen = () => {
 
   // Helper to get full image URL from storage path
   const getDeviceImageUrl = (imgPath) => {
-    if (!imgPath) return null;
+    if (!imgPath || imgPath === 'default.png' || imgPath === 'default_device.jpg') {
+      // Use backend-served placeholder if missing or default
+      let apiBase = API_URL.replace(/\/?api\/?$/, '');
+      apiBase = apiBase.replace(/^https:\/\/localhost:8000/i, 'http://localhost:8000');
+      return `${apiBase}/storage/devices/default.png`;
+    }
     // If already a full URL, force HTTP for localhost
     if (/^https?:\/\//i.test(imgPath)) {
       // Replace https with http for localhost:8000
       return imgPath.replace(/^https:\/\/localhost:8000/i, 'http://localhost:8000');
     }
     // Remove leading slashes and "/devices" segment if present
-    let cleanPath = imgPath.replace(/^\/+/,'');
+    let cleanPath = imgPath.replace(/^\/+/, '');
     cleanPath = cleanPath.replace(/^devices\/?/, '');
-    // Use API_URL as base for storage path, force http for localhost
-    let apiBase = API_URL.replace(/\/?api\/?$/, ''); // Remove trailing /api if present
+    let apiBase = API_URL.replace(/\/?api\/?$/, '');
     apiBase = apiBase.replace(/^https:\/\/localhost:8000/i, 'http://localhost:8000');
     return `${apiBase}/storage/${cleanPath}`;
   };
@@ -250,7 +255,11 @@ const DevicesScreen = () => {
       onPress={() => { setSelectedDevice(item); setShowDeviceModal(true); }}
       activeOpacity={0.85}
     >
-      <Image source={{ uri: getDeviceImageUrl(item.image_url) }} style={{ width: '100%', height: 90, borderRadius: 8, marginBottom: 8 }} resizeMode="cover" />
+      <Image
+        source={{ uri: getDeviceImageUrl(item.image_url) }}
+        style={{ width: cardWidth - 24, height: cardWidth - 24, borderRadius: 12, backgroundColor: '#eee' }}
+        resizeMode="cover"
+      />
       <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#1976d2' }}>{item.name}</Text>
       <Text style={{ color: '#888', fontSize: 13 }}>{getDeviceTypeName(item)}</Text>
       <Text style={{ color: getStatusColor(item.status), fontWeight: 'bold', marginTop: 4 }}>{item.status}</Text>

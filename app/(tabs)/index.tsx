@@ -2,16 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, ActivityIndicator, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import useUserRole from '../utils/useUserRole';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const userRole = useUserRole();
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     let isMounted = true;
     const checkRoleAndNavigate = async () => {
       try {
         const token = await AsyncStorage.getItem('token');
-        const userRole = await AsyncStorage.getItem('user_role');
         if (!isMounted) return;
         if (!token || !userRole) {
           router.replace('/auth/login');
@@ -38,9 +39,9 @@ export default function HomeScreen() {
         router.replace('/auth/login');
       }
     };
-    checkRoleAndNavigate().finally(() => { if (isMounted) setLoading(false); });
+    checkRoleAndNavigate();
     return () => { isMounted = false; };
-  }, []);
+  }, [userRole]);
   if (loading) {
     return (
       <View style={styles.container}>

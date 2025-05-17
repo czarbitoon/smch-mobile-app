@@ -5,11 +5,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import useUserRole from '../utils/useUserRole';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2/api';
 
 const Profile = () => {
   const router = useRouter();
+  const userRole = useUserRole();
   const [user, setUser] = useState({ name: '', email: '' });
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -83,18 +85,13 @@ const Profile = () => {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={async () => {
-        try {
-          const userRole = await AsyncStorage.getItem('user_role');
-          if (userRole === 'admin' || userRole === 'superadmin') {
-            router.replace('/screens/adminDashboard');
-          } else if (userRole === 'staff') {
-            router.replace('/screens/staffDashboard');
-          } else if (userRole === 'user') {
-            router.replace('/screens/userDashboard');
-          } else {
-            router.replace('/(tabs)/index');
-          }
-        } catch {
+        if (userRole === 'admin' || userRole === 'superadmin') {
+          router.replace('/screens/adminDashboard');
+        } else if (userRole === 'staff') {
+          router.replace('/screens/staffDashboard');
+        } else if (userRole === 'user') {
+          router.replace('/screens/userDashboard');
+        } else {
           router.replace('/(tabs)/index');
         }
       }} testID="back-btn">
