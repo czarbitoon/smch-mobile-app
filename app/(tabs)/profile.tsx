@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import useUserRole from '../utils/useUserRole';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2/api';
+import { API_URL } from "../utils/api";
 
 const Profile = () => {
   const router = useRouter();

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, Button, TouchableOpacity, Image, ScrollView, ActivityIndicator, Alert, Picker } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Button, TouchableOpacity, Image, ScrollView, ActivityIndicator, Alert} from 'react-native';
+import {Picker} from '@react-native-picker/picker';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -7,8 +8,7 @@ import * as ImagePicker from 'react-native-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import useUserRole from './utils/useUserRole';
 import { Snackbar } from 'react-native-paper';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
+import { API_URL } from "./utils/api";
 
 const useFetchWithToken = (fetchFn, deps = []) => {
   const router = useRouter();

@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import useUserRole from '../utils/useUserRole';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
+import { API_URL } from "../utils/api";
 
 const OfficesScreen = () => {
   const router = useRouter();

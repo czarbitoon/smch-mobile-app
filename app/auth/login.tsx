@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
    return config;
  });
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000/api";
+import { API_URL } from "../utils/api";
 
 const LoginScreen = () => {
   const [email, setEmail] = useState("");

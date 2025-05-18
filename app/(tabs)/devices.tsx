@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Button, ScrollView, ActivityIndicator, Image, FlatList, Modal, TouchableOpacity, Dimensions, TextInput, Picker } from 'react-native';
+import { View, Text, StyleSheet, Button, ScrollView, ActivityIndicator, Image, FlatList, Modal, TouchableOpacity, Dimensions, TextInput } from 'react-native';
+import {Picker} from '@react-native-picker/picker';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import useUserRole from '../utils/useUserRole';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
+import { API_URL } from "../utils/api";
 
 // Custom hook for fetching with token and error handling
 const useFetchWithToken = (fetchFn, deps = []) => {

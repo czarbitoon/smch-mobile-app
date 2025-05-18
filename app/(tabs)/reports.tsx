@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { Modal, ScrollView } from 'react-native';
 import useUserRole from '../utils/useUserRole';
+import { API_URL } from "../utils/api";
 
 const ReportsScreen = () => {
   const router = useRouter();
@@ -22,7 +23,8 @@ const ReportsScreen = () => {
   const [detailError, setDetailError] = useState("");
   const [showStatusUpdate, setShowStatusUpdate] = useState(false);
   const [statusValue, setStatusValue] = useState("");
-  const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
+  // Remove this line:
+  // const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
 
   const fetchReports = async () => {
     setLoading(true);

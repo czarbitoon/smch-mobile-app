@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { API_URL } from "../utils/api";
 
 const AdminDashboard = () => {
   const router = useRouter();
@@ -11,8 +12,7 @@ const AdminDashboard = () => {
   const user = { name: 'Admin', email: 'admin@example.com' };
   const [stats, setStats] = useState({ users: 0, devices: 0, reports: 0, offices: 0 });
   const [loadingStats, setLoadingStats] = useState(true);
-  const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
-  useEffect(() => {
+    useEffect(() => {
     const fetchStats = async () => {
       setLoadingStats(true);
       try {

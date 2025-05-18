@@ -5,6 +5,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import useUserRole from '../utils/useUserRole';
+import { API_URL } from "../utils/api";
+
 
 const UserManagement = () => {
   const userRole = useUserRole();
@@ -12,8 +14,8 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
-
+  // Remove this line:
+  
   const fetchUsers = async () => {
     setLoading(true);
     setError("");
