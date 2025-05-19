@@ -252,24 +252,21 @@ const DevicesScreen = () => {
   // Device card rendering (inside FlatList renderItem or similar)
   const renderDeviceCard = ({ item }) => (
     <TouchableOpacity
-      style={{ width: cardWidth, margin: 8, backgroundColor: '#fff', borderRadius: 12, padding: 12, elevation: 2 }}
-      onPress={() => { setSelectedDevice(item); setShowDeviceModal(true); }}
+      style={[styles.deviceCard, { width: cardWidth }]}
+      onPress={() => {
+        setSelectedDevice(item);
+        setShowDeviceModal(true);
+      }}
       activeOpacity={0.85}
     >
-      <Image
-        source={{ uri: getDeviceImageUrl(item.image_url) }}
-        style={{ width: cardWidth - 24, height: cardWidth - 24, borderRadius: 12, backgroundColor: '#eee' }}
-        resizeMode="cover"
-      />
-      <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#1976d2' }}>{item.name}</Text>
-      <Text style={{ color: '#888', fontSize: 13 }}>{getDeviceTypeName(item)}</Text>
-      <Text style={{ color: getStatusColor(item.status), fontWeight: 'bold', marginTop: 4 }}>{item.status}</Text>
-      {/* Edit button for admin/superadmin */}
-      {(userRole === 'admin' || userRole === 'superadmin') && (
-        <TouchableOpacity style={{ marginTop: 8, alignSelf: 'flex-end' }} onPress={() => { setEditDeviceData(item); setShowEditModal(true); }}>
-          <Text style={{ color: '#1976d2', fontWeight: 'bold' }}>Edit</Text>
-        </TouchableOpacity>
-      )}
+      <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+        <Image
+          source={{ uri: getDeviceImageUrl(item.image_url || item.image) }}
+          style={{ width: cardWidth * 0.9, height: cardWidth * 0.7, borderRadius: 10, resizeMode: 'cover' }}
+        />
+      </View>
+      <Text style={styles.deviceName} numberOfLines={2}>{item.name}</Text>
+      <Text style={[styles.deviceStatus, { color: getStatusColor(item.status) }]}>{item.status || 'Unknown'}</Text>
     </TouchableOpacity>
   );
 
@@ -282,15 +279,25 @@ const DevicesScreen = () => {
       onRequestClose={() => setShowDeviceModal(false)}
     >
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}>
-        <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '90%', maxHeight: '90%' }}>
-          {selectedDevice ? (
+        <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '92%', maxHeight: '92%' }}>
+          {selectedDevice && (
             <ScrollView>
-              <Image source={{ uri: getDeviceImageUrl(selectedDevice.image_url) }} style={{ width: '100%', height: 180, borderRadius: 8, marginBottom: 12 }} resizeMode="cover" />
+              <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                <Image
+                  source={{ uri: getDeviceImageUrl(selectedDevice.image_url || selectedDevice.image) }}
+                  style={{ width: 320, height: 220, borderRadius: 12, resizeMode: 'cover' }}
+                />
+              </View>
               <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 8, color: '#1976d2' }}>{selectedDevice.name}</Text>
-              <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>Type: <Text style={{ fontWeight: 'normal', color: '#333' }}>{getDeviceTypeName(selectedDevice)}</Text></Text>
-              <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>Status: <Text style={{ fontWeight: 'normal', color: getStatusColor(selectedDevice.status) }}>{selectedDevice.status}</Text></Text>
-              <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>Office: <Text style={{ fontWeight: 'normal', color: '#333' }}>{selectedDevice.office?.name || selectedDevice.office_id}</Text></Text>
-              {/* Big Edit button for admin/superadmin */}
+              <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>
+                Type: <Text style={{ fontWeight: 'normal', color: '#333' }}>{getDeviceTypeName(selectedDevice)}</Text>
+              </Text>
+              <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>
+                Status: <Text style={{ fontWeight: 'normal', color: getStatusColor(selectedDevice.status) }}>{selectedDevice.status}</Text>
+              </Text>
+              <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>
+                Office: <Text style={{ fontWeight: 'normal', color: '#333' }}>{selectedDevice.office?.name || selectedDevice.office_id}</Text>
+              </Text>
               {(userRole === 'admin' || userRole === 'superadmin') && (
                 <TouchableOpacity
                   style={{
@@ -309,18 +316,47 @@ const DevicesScreen = () => {
                     shadowRadius: 6,
                     elevation: 4,
                   }}
-                  onPress={() => { setEditDeviceData(selectedDevice); setShowEditModal(true); }}
+                  onPress={() => {
+                    setEditDeviceData(selectedDevice);
+                    setShowEditModal(true);
+                  }}
                   activeOpacity={0.85}
                   testID="edit-device-btn"
                 >
                   <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 20, letterSpacing: 1 }}>Edit Device</Text>
                 </TouchableOpacity>
               )}
+              <TouchableOpacity
+                style={{
+                  marginTop: 8,
+                  marginBottom: 8,
+                  alignSelf: 'center',
+                  backgroundColor: '#1976d2',
+                  borderRadius: 10,
+                  paddingVertical: 14,
+                  paddingHorizontal: 40,
+                  width: '90%',
+                  alignItems: 'center',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.10,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}
+                onPress={() => {
+                  setShowDeviceModal(false);
+                  router.push({ pathname: '/reportCreate', params: { deviceId: selectedDevice.id, deviceName: selectedDevice.name } });
+                }}
+                activeOpacity={0.85}
+                testID="report-device-btn"
+              >
+                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 18 }}>Report Device</Text>
+              </TouchableOpacity>
               <View style={{ marginTop: 24, width: '100%' }}>
                 <Button title="Close" color="#757575" onPress={() => setShowDeviceModal(false)} />
               </View>
             </ScrollView>
-          ) : null}
+          )}
         </View>
       </View>
     </Modal>

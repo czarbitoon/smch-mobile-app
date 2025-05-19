@@ -8,6 +8,7 @@ import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import useUserRole from './utils/useUserRole';
 import { Snackbar } from 'react-native-paper';
+import { API_URL } from "./utils/api";
 
 export default function ReportCreate() {
   const router = useRouter();
@@ -16,11 +17,10 @@ export default function ReportCreate() {
   const [description, setDescription] = useState('');
   const [image, setImage] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [priority, setPriority] = useState('Low');
   const [error, setError] = useState('');
-  const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'info' });
+  const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' });
 
-  const API_URL = process.env.EXPO_PUBLIC_API_URL || (Platform.OS === 'android' ? 'http://10.0.2.2/api' : 'http://192.168.1.100/api');
+  // const API_URL = process.env.EXPO_PUBLIC_API_URL || (Platform.OS === 'android' ? 'http://10.0.2.2/api' : 'http://192.168.1.100/api');
 
   const handlePickImage = async () => {
     ImagePicker.launchImageLibrary({ mediaType: 'photo', quality: 0.7 }, (response) => {
@@ -41,17 +41,14 @@ export default function ReportCreate() {
       setSnackbar({ visible: true, message: 'Description is required', type: 'error' });
       return;
     }
+    if (!deviceId) {
+      setError('Device is required');
+      setSnackbar({ visible: true, message: 'Device is required', type: 'error' });
+      return;
+    }
     setUploading(true);
     setError('');
     try {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        setError('Unauthorized. Please login again.');
-        setSnackbar({ visible: true, message: 'Session expired. Please login again.', type: 'error' });
-        setUploading(false);
-        router.replace('/auth/login');
-        return;
-      }
       let reportImagePath = null;
       if (image) {
         const imgForm = new FormData();
@@ -62,35 +59,31 @@ export default function ReportCreate() {
         });
         imgForm.append('folder', 'report_images');
         const imgRes = await axios.post(`${API_URL}/images/upload`, imgForm, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            'Authorization': `Bearer ${token}`,
-          },
+          headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` },
         });
-        if (imgRes.data && imgRes.data.path) {
-          reportImagePath = imgRes.data.path;
-        }
+        reportImagePath = imgRes.data.path;
       }
       const formData = new FormData();
       formData.append('title', `Issue Report - ${deviceName || 'Device'}`);
       formData.append('device_id', deviceId);
       formData.append('description', description);
-      formData.append('priority', priority);
       formData.append('status', 'pending');
       if (reportImagePath) {
         formData.append('report_image', reportImagePath);
       }
       await axios.post(`${API_URL}/reports`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` },
       });
-      setSnackbar({ visible: true, message: 'Report submitted successfully', type: 'success' });
-      setTimeout(() => router.replace('/(tabs)/reports'), 1200);
+      setSnackbar({ visible: true, message: 'Report submitted successfully!', type: 'success' });
+      setDescription('');
+      setImage(null);
+      navigation.goBack();
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || 'Unknown error');
-      setSnackbar({ visible: true, message: 'Failed to submit report: ' + (err?.response?.data?.message || err.message || 'Unknown error'), type: 'error' });
+      const errorMessage = err?.response?.data?.error === 'User not authenticated'
+        ? 'Please log in to submit a report'
+        : err?.response?.data?.error || err?.response?.data?.message || 'Error submitting report';
+      setError(errorMessage);
+      setSnackbar({ visible: true, message: errorMessage, type: 'error' });
     } finally {
       setUploading(false);
     }
@@ -132,26 +125,6 @@ export default function ReportCreate() {
         numberOfLines={4}
         testID="description-input"
       />
-      <View style={{ marginBottom: 16 }}>
-        <Text style={{ marginBottom: 4 }}>Priority:</Text>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          {['Low','Medium','High','Critical'].map((level) => (
-            <TouchableOpacity
-              key={level}
-              style={{
-                backgroundColor: priority === level ? '#1976d2' : '#e3e3e3',
-                padding: 8,
-                borderRadius: 8,
-                marginRight: 8
-              }}
-              onPress={() => setPriority(level)}
-              testID={`priority-btn-${level}`}
-            >
-              <Text style={{ color: priority === level ? '#fff' : '#333' }}>{level}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
       <TouchableOpacity style={styles.imagePicker} onPress={handlePickImage} testID="pick-image-btn">
         {image ? (
           <Image source={{ uri: image.uri }} style={styles.imagePreview} />

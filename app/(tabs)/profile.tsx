@@ -22,6 +22,7 @@ const Profile = () => {
   const [editSuccess, setEditSuccess] = useState('');
   const [profileImage, setProfileImage] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [imageError, setImageError] = useState('');
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -99,6 +100,7 @@ const Profile = () => {
       </TouchableOpacity>
       <View style={styles.profileCard}>
         <TouchableOpacity onPress={async () => {
+          setImageError('');
           let result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
@@ -107,8 +109,17 @@ const Profile = () => {
             base64: false
           });
           if (!result.canceled && result.assets && result.assets.length > 0) {
-            setUploading(true);
             const asset = result.assets[0];
+            // Validate image type and size (<10MB)
+            if (asset.fileSize && asset.fileSize > 10 * 1024 * 1024) {
+              setImageError('Image must be less than 10MB.');
+              return;
+            }
+            if (asset.type && !['image/jpeg', 'image/png', 'image/jpg'].includes(asset.type)) {
+              setImageError('Only JPG and PNG images are allowed.');
+              return;
+            }
+            setUploading(true);
             const formData = new FormData();
             formData.append('photo', { uri: asset.uri, name: asset.fileName || 'profile.jpg', type: asset.type || 'image/jpeg' });
             try {
@@ -117,7 +128,7 @@ const Profile = () => {
               setProfileImage(res.data.image_url);
               await AsyncStorage.setItem('user_image', res.data.image_url);
             } catch (e) {
-              // handle error
+              setImageError('Failed to upload image.');
             } finally {
               setUploading(false);
             }
@@ -126,11 +137,12 @@ const Profile = () => {
           {uploading ? (
             <ActivityIndicator size="small" color="#1976d2" style={styles.avatar} />
           ) : profileImage ? (
-            <Image source={{ uri: profileImage }} style={styles.avatar} />
+            <Image source={{ uri: profileImage }} style={styles.avatar} onError={() => setProfileImage(null)} />
           ) : (
-            <View style={styles.avatar} />
+            <Image source={require('../assets/default_avatar.png')} style={styles.avatar} />
           )}
         </TouchableOpacity>
+        {imageError ? <Text style={{ color: 'red', marginBottom: 8 }}>{imageError}</Text> : null}
         <Text style={styles.profileName}>{user.name}</Text>
         <Text style={styles.profileEmail}>{user.email}</Text>
         <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
