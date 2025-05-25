@@ -5,7 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import useUserRole from '../utils/useUserRole';
-import { API_URL } from "../utils/api";
+import { API_URL } from "../../utils/api";
 
 
 const UserManagement = () => {
@@ -132,19 +132,38 @@ const UserManagement = () => {
   if (error) return <Text style={styles.error}>{error}</Text>;
 
   return (
-    <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={async () => {
-      if (userRole === 'admin' || userRole === 'superadmin') {
-        router.replace('/screens/adminDashboard');
-      } else if (userRole === 'staff') {
-        router.replace('/screens/staffDashboard');
-      } else if (userRole === 'user') {
-        router.replace('/screens/userDashboard');
-      } else {
-        router.replace('/(tabs)/index');
-      }
-    }} testID="back-btn">
-      <Ionicons name="arrow-back" size={28} color="#1976d2" />
-    </TouchableOpacity>
+    <View style={styles.container}>
+      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={async () => {
+        if (userRole === 'admin' || userRole === 'superadmin') {
+          router.replace('/screens/adminDashboard');
+        } else if (userRole === 'staff') {
+          router.replace('/screens/staffDashboard');
+        } else if (userRole === 'user') {
+          router.replace('/screens/userDashboard');
+        } else {
+          router.replace('/(tabs)/index');
+        }
+      }} testID="back-btn">
+        <Ionicons name="arrow-back" size={28} color="#1976d2" />
+      </TouchableOpacity>
+      <Text style={styles.title}>User Management</Text>
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {loading ? (
+        <ActivityIndicator style={styles.loadingIndicator} size="large" color="#1976d2" />
+      ) : (
+        <FlatList
+          data={users}
+          keyExtractor={item => item.id.toString()}
+          renderItem={renderItem}
+          refreshing={refreshing}
+          onRefresh={fetchUsers}
+          contentContainerStyle={{ paddingBottom: 40 }}
+        />
+      )}
+      <TouchableOpacity style={styles.refreshBtn} onPress={fetchUsers}>
+        <Text style={styles.refreshBtnText}>Refresh</Text>
+      </TouchableOpacity>
+    </View>
   );
 };
 
@@ -184,33 +203,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  userInfo: {
-    flex: 1,
-    marginRight: 10,
-  },
-  userName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#222',
-    marginBottom: 2,
-    letterSpacing: 0.2,
-  },
-  userEmail: {
-    fontSize: 15,
-    color: '#666',
-    marginBottom: 2,
-  },
-  userRole: {
-    fontSize: 14,
-    color: '#1976d2',
-    fontWeight: 'bold',
-    marginBottom: 2,
+    marginTop: 8,
   },
   actionButtons: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginLeft: 8,
   },
   actionBtn: {
     backgroundColor: '#1976d2',

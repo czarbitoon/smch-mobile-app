@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { API_URL } from "../utils/api";
+import { API_URL } from "../../utils/api";
 
 const AdminDashboard = () => {
   const router = useRouter();

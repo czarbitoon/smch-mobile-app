@@ -7,8 +7,7 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'react-native-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import useUserRole from './utils/useUserRole';
-import { Snackbar } from 'react-native-paper';
-import { API_URL } from "./utils/api";
+import { API_URL } from "../utils/api";
 
 const useFetchWithToken = (fetchFn, deps = []) => {
   const router = useRouter();
@@ -61,10 +60,9 @@ const DeviceCreateScreen = () => {
   const [offices, setOffices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [description, setDescription] = useState('');
-  const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'info' });
-
 
 // Fetch categories
   const { data: categories } = useFetchWithToken(async (token) => {
@@ -123,9 +121,9 @@ const DeviceCreateScreen = () => {
   };
 
   const handleSubmit = async () => {
+    setSuccess('');
     if (!name || !category || !type || !office || !description) {
       setError('Please fill all required fields.');
-      setSnackbar({ visible: true, message: 'Please fill all required fields.', type: 'error' });
       return;
     }
     setLoading(true);
@@ -152,11 +150,10 @@ const DeviceCreateScreen = () => {
           'Content-Type': 'multipart/form-data',
         },
       });
-      setSnackbar({ visible: true, message: 'Device created successfully', type: 'success' });
+      setSuccess('Device created successfully');
       setTimeout(() => router.replace('/(tabs)/devices'), 1200);
     } catch (e) {
       setError(e?.response?.data?.message || 'Failed to create device');
-      setSnackbar({ visible: true, message: e?.response?.data?.message || 'Failed to create device', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -191,20 +188,21 @@ const DeviceCreateScreen = () => {
     </View>
       <Text style={styles.title}>Create Device</Text>
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      <TextInput style={styles.input} placeholder="Device Name" value={name} onChangeText={setName} />
-      <TextInput style={styles.input} placeholder="Description (required)" value={description} onChangeText={setDescription} multiline numberOfLines={3} />
+      {success ? <Text style={styles.success}>{success}</Text> : null}
+      <TextInput style={styles.input} placeholder="Device Name" value={name} onChangeText={setName} accessibilityLabel="Device Name" />
+      <TextInput style={styles.input} placeholder="Description (required)" value={description} onChangeText={setDescription} multiline numberOfLines={3} accessibilityLabel="Description" />
       <Text style={styles.label}>Category</Text>
-       <View style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, marginBottom: 12 }}>
-                    <Picker selectedValue={category} onValueChange={val => { setCategory(val); setSelectedCategory(val); }}>
-                      <Picker.Item label="Select Category" value="" />
-                      {categories.map(c => <Picker.Item key={c.id} label={c.name} value={c.id?.toString()} />)}
-                    </Picker>
+      <View style={styles.dropdownWrapper}>
+        <Picker selectedValue={category} onValueChange={val => { setCategory(val); setSelectedCategory(val); }} accessibilityLabel="Category">
+          <Picker.Item label="Select Category" value="" />
+          {categories.map(c => <Picker.Item key={c.id} label={c.name} value={c.id?.toString()} />)}
+        </Picker>
       </View>
       <Text style={styles.label}>Type</Text>
       <View style={styles.pickerWrapper}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} accessibilityLabel="Type">
           {types.map((t) => (
-            <TouchableOpacity key={t.id} style={[styles.pickerItem, type === t.id && styles.selectedPicker]} onPress={() => setType(t.id)}>
+            <TouchableOpacity key={t.id} style={[styles.pickerItem, type === t.id && styles.selectedPicker]} onPress={() => setType(t.id)} accessibilityRole="button" accessibilityState={{ selected: type === t.id }}>
               <Text style={type === t.id ? styles.selectedPickerText : styles.pickerText}>{t.name}</Text>
             </TouchableOpacity>
           ))}
@@ -212,32 +210,38 @@ const DeviceCreateScreen = () => {
       </View>
       <Text style={styles.label}>Office</Text>
       <View style={styles.pickerWrapper}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} accessibilityLabel="Office">
           {offices.map((o) => (
-            <TouchableOpacity key={o.id} style={[styles.pickerItem, office === o.id && styles.selectedPicker]} onPress={() => setOffice(o.id)}>
-              <Text style={styles.pickerText}>{o.name}</Text>
+            <TouchableOpacity key={o.id} style={[styles.pickerItem, office === o.id && styles.selectedPicker]} onPress={() => setOffice(o.id)} accessibilityRole="button" accessibilityState={{ selected: office === o.id }}>
+              <Text style={office === o.id ? styles.selectedPickerText : styles.pickerText}>{o.name}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
       <Text style={styles.label}>Status</Text>
       <View style={styles.pickerWrapper}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} accessibilityLabel="Status">
           {['pending', 'resolved', 'repair', 'decommissioned'].map((s) => (
-            <TouchableOpacity key={s} style={[styles.pickerItem, status === s && styles.selectedPicker]} onPress={() => setStatus(s)}>
-              <Text style={styles.pickerText}>{s.charAt(0).toUpperCase() + s.slice(1)}</Text>
+            <TouchableOpacity key={s} style={[styles.pickerItem, status === s && styles.selectedPicker]} onPress={() => setStatus(s)} accessibilityRole="button" accessibilityState={{ selected: status === s }}>
+              <Text style={status === s ? styles.selectedPickerText : styles.pickerText}>{s.charAt(0).toUpperCase() + s.slice(1)}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
-      <TouchableOpacity style={styles.imagePicker} onPress={handlePickImage}>
+      <TouchableOpacity style={[styles.imagePicker, image && styles.imagePicked]} onPress={handlePickImage} accessibilityRole="button" accessibilityLabel="Pick Image">
         {image ? (
-          <Image source={{ uri: image.uri }} style={styles.imagePreview} />
+          <Image source={{ uri: image.uri }} style={styles.imagePreview} resizeMode="cover" />
         ) : (
           <Text style={styles.imagePickerText}>Pick Image</Text>
         )}
       </TouchableOpacity>
-      <Button title={loading ? 'Creating...' : 'Create Device'} onPress={handleSubmit} disabled={loading} />
+      {loading ? (
+        <ActivityIndicator size="large" color="#1976d2" style={{ marginVertical: 16 }} />
+      ) : (
+        <TouchableOpacity style={styles.createButton} onPress={handleSubmit} disabled={loading} accessibilityRole="button" accessibilityLabel="Create Device">
+          <Text style={styles.createButtonText}>{loading ? 'Creating...' : 'Create Device'}</Text>
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 };
@@ -260,14 +264,22 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   label: { fontWeight: 'bold', marginTop: 12, marginBottom: 4, color: '#333' },
+  dropdownWrapper: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, marginBottom: 12, backgroundColor: '#f7f8fa' },
   pickerWrapper: { flexDirection: 'row', marginBottom: 8 },
   pickerItem: { paddingVertical: 8, paddingHorizontal: 16, backgroundColor: '#eee', borderRadius: 8, marginRight: 8 },
   selectedPicker: { backgroundColor: '#1976d2' },
   pickerText: { color: '#333', fontWeight: 'bold' },
-  imagePicker: { marginVertical: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#bbb', borderRadius: 8, height: 120 },
+  selectedPickerText: { color: '#fff', fontWeight: 'bold' },
+  imagePicker: { marginVertical: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#bbb', borderRadius: 8, height: 120, backgroundColor: '#fafbfc' },
+  imagePicked: { borderColor: '#1976d2', backgroundColor: '#e3f2fd' },
   imagePickerText: { color: '#888', fontSize: 16 },
   imagePreview: { width: 120, height: 120, borderRadius: 8 },
+  createButton: { backgroundColor: '#1976d2', paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 8, marginBottom: 16, elevation: 2 },
+  createButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
   error: { color: 'red', marginBottom: 8, textAlign: 'center' },
+  success: { color: 'green', marginBottom: 8, textAlign: 'center' },
+  snackbarError: { backgroundColor: '#d32f2f' },
+  snackbarSuccess: { backgroundColor: '#388e3c' },
 });
 
 export default DeviceCreateScreen;

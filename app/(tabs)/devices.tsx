@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import useUserRole from '../utils/useUserRole';
 
-import { API_URL } from "../utils/api";
+import { API_URL } from "../../utils/api";
 
 // Custom hook for fetching with token and error handling
 const useFetchWithToken = (fetchFn, deps = []) => {
@@ -51,11 +51,11 @@ const useFetchWithToken = (fetchFn, deps = []) => {
 
 const DevicesScreen = () => {
   const router = useRouter();
-  // Filter state
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [selectedOffice, setSelectedOffice] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+   // Filter state
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [selectedOffice, setSelectedOffice] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 9;
   // Modal state
@@ -73,6 +73,8 @@ const DevicesScreen = () => {
   const userRole = useUserRole();
   // Refresh state for FlatList
   const [refreshing, setRefreshing] = useState(false);
+  // User office state
+  const [userOfficeId, setUserOfficeId] = useState("");
 
   // DEBUG: Show current userRole
   // Remove or comment out after debugging
@@ -87,6 +89,7 @@ const DevicesScreen = () => {
     (async () => {
       try {
         let role = "";
+        let officeId = "";
         // Always check direct user_role key first for persistence
         const directRole = await AsyncStorage.getItem('user_role');
         if (directRole) {
@@ -97,50 +100,64 @@ const DevicesScreen = () => {
           if (userStr) {
             const user = JSON.parse(userStr);
             role = user?.role ?? user?.user_role ?? "";
+            officeId = user?.office_id?.toString() || user?.office?.id?.toString() || "";
           }
         }
-        if (isMounted) setUserRole(role);
+        // Try to get office_id directly if not found above
+        if (!officeId) {
+          const officeIdStr = await AsyncStorage.getItem('office_id');
+          if (officeIdStr) officeId = officeIdStr;
+        }
+        if (isMounted) {
+          setUserRole(role);
+          setUserOfficeId(officeId);
+          // If not admin, set office filter and prevent changing
+          if (role !== 'admin' && role !== 'superadmin' && officeId) {
+            setSelectedOffice(officeId);
+          }
+        }
       } catch {}
     })();
     return () => { isMounted = false; };
   }, []);
   // Calculate card size for responsive grid
   const windowWidth = Dimensions.get('window').width;
-  const horizontalPadding = 32; // 16 left + 16 right
-  const cardSpacing = 16; // space between cards
-  const numColumns = 3; // Fixed 3 columns for 3x3 grid
+  const horizontalPadding = 32;
+  const cardSpacing = 16;
+  const numColumns = windowWidth < 600 ? 1 : windowWidth < 900 ? 2 : 3;
   const cardWidth = (windowWidth - horizontalPadding - cardSpacing * (numColumns - 1)) / numColumns;
 
   // Helper functions
   const getStatusColor = (status) => {
     switch ((status || '').toLowerCase()) {
-      case 'resolved':
-        return '#388e3c';
-      case 'pending':
-        return '#fbc02d';
-      case 'repair':
-        return '#1976d2';
-      case 'decommissioned':
-        return '#d32f2f';
-      default:
-        return '#757575';
+      case 'resolved': return '#388e3c';
+      case 'pending': return '#fbc02d';
+      case 'repair': return '#1976d2';
+      case 'decommissioned': return '#d32f2f';
+      default: return '#757575';
     }
   };
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    // Simulate re-fetch by triggering a state change
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 500);
+  }, []);
+
+
 
   // Helper to get full image URL from storage path
   const getDeviceImageUrl = (imgPath) => {
     if (!imgPath || imgPath === 'default.png' || imgPath === 'default_device.jpg') {
-      // Use backend-served placeholder if missing or default
       let apiBase = API_URL.replace(/\/?api\/?$/, '');
       apiBase = apiBase.replace(/^https:\/\/localhost:8000/i, 'http://localhost:8000');
       return `${apiBase}/storage/devices/default.png`;
     }
-    // If already a full URL, force HTTP for localhost
     if (/^https?:\/\//i.test(imgPath)) {
-      // Replace https with http for localhost:8000
       return imgPath.replace(/^https:\/\/localhost:8000/i, 'http://localhost:8000');
     }
-    // Remove leading slashes and "/devices" segment if present
     let cleanPath = imgPath.replace(/^\/+/, '');
     cleanPath = cleanPath.replace(/^devices\/?/, '');
     let apiBase = API_URL.replace(/\/?api\/?$/, '');
@@ -250,117 +267,53 @@ const DevicesScreen = () => {
   ];
 
   // Device card rendering (inside FlatList renderItem or similar)
-  const renderDeviceCard = ({ item }) => (
-    <TouchableOpacity
-      style={[styles.deviceCard, { width: cardWidth }]}
-      onPress={() => {
-        setSelectedDevice(item);
-        setShowDeviceModal(true);
-      }}
-      activeOpacity={0.85}
-    >
-      <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-        <Image
-          source={{ uri: getDeviceImageUrl(item.image_url || item.image) }}
-          style={{ width: cardWidth * 0.9, height: cardWidth * 0.7, borderRadius: 10, resizeMode: 'cover' }}
-        />
-      </View>
-      <Text style={styles.deviceName} numberOfLines={2}>{item.name}</Text>
-      <Text style={[styles.deviceStatus, { color: getStatusColor(item.status) }]}>{item.status || 'Unknown'}</Text>
-    </TouchableOpacity>
+  const renderFilterBar = () => (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginHorizontal: 8 }}>
+      <TouchableOpacity style={styles.filterBox} onPress={() => setShowCategoryModal(true)}>
+        <Text style={styles.filterLabel}>Category</Text>
+        <Text style={styles.filterValue}>{categories.find(c => c.id == selectedCategory)?.name || 'All'}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.filterBox} onPress={() => setShowTypeModal(true)}>
+        <Text style={styles.filterLabel}>Type</Text>
+        <Text style={styles.filterValue}>{types.find(t => t.id == typeFilter)?.name || 'All'}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.filterBox} onPress={() => setShowOfficeModal(true)} disabled={userRole !== 'admin' && userRole !== 'superadmin'}>
+        <Text style={styles.filterLabel}>Office</Text>
+        <Text style={styles.filterValue}>{offices.find(o => o.id == selectedOffice)?.name || 'All'}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.filterBox} onPress={() => setShowStatusModal(true)}>
+        <Text style={styles.filterLabel}>Status</Text>
+        <Text style={styles.filterValue}>{statusOptions.find(s => s.value == statusFilter)?.label || 'All'}</Text>
+      </TouchableOpacity>
+    </View>
   );
-
-  // Device modal rendering
-  const renderDeviceModal = () => (
-    <Modal
-      visible={showDeviceModal && !!selectedDevice}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={() => setShowDeviceModal(false)}
-    >
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}>
-        <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '92%', maxHeight: '92%' }}>
-          {selectedDevice && (
-            <ScrollView>
-              <View style={{ alignItems: 'center', marginBottom: 16 }}>
-                <Image
-                  source={{ uri: getDeviceImageUrl(selectedDevice.image_url || selectedDevice.image) }}
-                  style={{ width: 320, height: 220, borderRadius: 12, resizeMode: 'cover' }}
-                />
-              </View>
-              <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 8, color: '#1976d2' }}>{selectedDevice.name}</Text>
-              <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>
-                Type: <Text style={{ fontWeight: 'normal', color: '#333' }}>{getDeviceTypeName(selectedDevice)}</Text>
-              </Text>
-              <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>
-                Status: <Text style={{ fontWeight: 'normal', color: getStatusColor(selectedDevice.status) }}>{selectedDevice.status}</Text>
-              </Text>
-              <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>
-                Office: <Text style={{ fontWeight: 'normal', color: '#333' }}>{selectedDevice.office?.name || selectedDevice.office_id}</Text>
-              </Text>
-              {(userRole === 'admin' || userRole === 'superadmin') && (
-                <TouchableOpacity
-                  style={{
-                    marginTop: 32,
-                    marginBottom: 16,
-                    alignSelf: 'center',
-                    backgroundColor: '#1976d2',
-                    borderRadius: 12,
-                    paddingVertical: 18,
-                    paddingHorizontal: 48,
-                    width: '90%',
-                    alignItems: 'center',
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.15,
-                    shadowRadius: 6,
-                    elevation: 4,
-                  }}
-                  onPress={() => {
-                    setEditDeviceData(selectedDevice);
-                    setShowEditModal(true);
-                  }}
-                  activeOpacity={0.85}
-                  testID="edit-device-btn"
-                >
-                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 20, letterSpacing: 1 }}>Edit Device</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity
-                style={{
-                  marginTop: 8,
-                  marginBottom: 8,
-                  alignSelf: 'center',
-                  backgroundColor: '#1976d2',
-                  borderRadius: 10,
-                  paddingVertical: 14,
-                  paddingHorizontal: 40,
-                  width: '90%',
-                  alignItems: 'center',
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.10,
-                  shadowRadius: 4,
-                  elevation: 2,
-                }}
-                onPress={() => {
-                  setShowDeviceModal(false);
-                  router.push({ pathname: '/reportCreate', params: { deviceId: selectedDevice.id, deviceName: selectedDevice.name } });
-                }}
-                activeOpacity={0.85}
-                testID="report-device-btn"
-              >
-                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 18 }}>Report Device</Text>
-              </TouchableOpacity>
-              <View style={{ marginTop: 24, width: '100%' }}>
-                <Button title="Close" color="#757575" onPress={() => setShowDeviceModal(false)} />
-              </View>
-            </ScrollView>
-          )}
+  const renderDeviceCard = ({ item }) => {
+    const imageUrl = getDeviceImageUrl(item.image_url || item.image);
+    let imageProps = {
+      source: { uri: imageUrl },
+      style: { width: cardWidth * 0.9, height: cardWidth * 0.7, borderRadius: 10, resizeMode: 'cover', backgroundColor: '#f0f0f0' }
+    };
+    // Platform-specific placeholder handling
+    if (typeof window === 'undefined' || (typeof navigator !== 'undefined' && navigator.product !== 'ReactNativeWeb')) {
+      imageProps.defaultSource = require('../assets/default.png');
+    }
+    return (
+      <TouchableOpacity
+        style={[styles.deviceCard, { width: cardWidth, minHeight: cardWidth * 1.15 }]}
+        onPress={() => {
+          setSelectedDevice(item);
+          setShowDeviceModal(true);
+        }}
+        activeOpacity={0.85}
+      >
+        <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+          <Image {...imageProps} onError={(e) => { imageProps.source = require('../assets/default.png'); }} />
         </View>
-      </View>
-    </Modal>
-  );
+        <Text style={styles.deviceName} numberOfLines={2}>{item.name}</Text>
+        <Text style={[styles.deviceStatus, { color: getStatusColor(item.status) }]}>{item.status || 'Unknown'}</Text>
+      </TouchableOpacity>
+    );
+  };
 
   const renderCategoryModal = () => (
     <Modal
@@ -731,243 +684,240 @@ const getDeviceTypeName = (device) => {
             {typeFilter ? (types.find(t => t.id === typeFilter)?.name || 'Type') : 'Type'}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => setShowOfficeModal(true)}
-        >
-          <Text style={styles.filterButtonText}>
-            {selectedOffice ? (offices.find(o => o.id === selectedOffice)?.name || 'Office') : 'Office'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => setShowStatusModal(true)}
-        >
-          <Text style={styles.filterButtonText}>
-            {statusFilter ? (statusOptions.find(s => s.value === statusFilter)?.label || 'Status') : 'Status'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.deviceGrid}>
-        {loading ? (
-          <ActivityIndicator size="large" color="#1976d2" style={{ marginTop: 48 }} />
-        ) : error ? (
-          <Text style={styles.emptyText}>{error}</Text>
-        ) : (
-          <FlatList
-            data={paginatedDevices}
-            keyExtractor={item => item.id?.toString() || Math.random().toString()}
-            renderItem={renderDeviceCard}
-            contentContainerStyle={{ paddingBottom: 32 }}
-            numColumns={numColumns}
-            columnWrapperStyle={{ justifyContent: 'space-between', marginBottom: 16 }}
-            ListEmptyComponent={<Text style={{ color: '#888', fontSize: 16, marginTop: 32, textAlign: 'center' }}>No devices found.</Text>}
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-          />
+        // Office Filter Button (hide for staff/user)
+        {(userRole === 'admin' || userRole === 'superadmin') && (
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setShowOfficeModal(true)}
+          >
+            <Ionicons name="business" size={18} color="#1976d2" style={{ marginRight: 6 }} />
+            <Text style={styles.filterButtonText} numberOfLines={1}>
+              {selectedOffice ? (offices.find(o => o.id?.toString() === selectedOffice?.toString())?.name || 'Office') : 'Office'}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color="#1976d2" style={{ marginLeft: 2 }} />
+          </TouchableOpacity>
         )}
-        {totalPages > 1 && (
-          <View style={styles.paginationRow}>
-            <Button
-              title="Prev"
-              onPress={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              color={currentPage === 1 ? '#ccc' : '#1976d2'}
-            />
-            <Text style={{ marginHorizontal: 12 }}>{currentPage} / {totalPages}</Text>
-            <Button
-              title="Next"
-              onPress={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              color={currentPage === totalPages ? '#ccc' : '#1976d2'}
-            />
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={() => setShowStatusModal(true)}
+            >
+              <Text style={styles.filterButtonText}>
+                {statusFilter ? (statusOptions.find(s => s.value === statusFilter)?.label || 'Status') : 'Status'}
+              </Text>
+            </TouchableOpacity>
           </View>
-        )}
-      </View>
-      {renderDeviceModal()}
-      {renderCategoryModal()}
-      {renderTypeModal()}
-      {renderOfficeModal()}
-      {renderStatusModal()}
-      {renderEditModal()}
-    </View>
-  );
-};
+          <View style={styles.deviceGrid}>
+            {loading ? (
+              <ActivityIndicator size="large" color="#1976d2" style={{ marginTop: 48 }} />
+            ) : error ? (
+              <Text style={styles.emptyText}>{error}</Text>
+            ) : (
+              <FlatList
+                data={paginatedDevices}
+                keyExtractor={item => item.id?.toString() || Math.random().toString()}
+                renderItem={renderDeviceCard}
+                contentContainerStyle={{ paddingBottom: 32 }}
+                numColumns={numColumns}
+                columnWrapperStyle={{ justifyContent: 'space-between', marginBottom: 16 }}
+                ListEmptyComponent={<Text style={{ color: '#888', fontSize: 16, marginTop: 32, textAlign: 'center' }}>No devices found.</Text>}
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+              />
+            )}
+            {totalPages > 1 && (
+              <View style={styles.paginationRow}>
+                <Button
+                  title="Prev"
+                  onPress={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  color={currentPage === 1 ? '#ccc' : '#1976d2'}
+                />
+                <Text style={{ marginHorizontal: 12 }}>{currentPage} / {totalPages}</Text>
+                <Button
+                  title="Next"
+                  onPress={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  color={currentPage === totalPages ? '#ccc' : '#1976d2'}
+                />
+              </View>
+            )}
+          </View>
+          {renderDeviceModal()}
+          {renderCategoryModal()}
+          {renderTypeModal()}
+          {renderOfficeModal()}
+          {renderStatusModal()}
+          {renderEditModal()}
+        </View>
+      );
+    };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f7f8fa',
-    paddingTop: 24,
-    paddingHorizontal: 16,
-  },
-  backButton: {
-    position: 'absolute',
-    top: 40,
-    left: 16,
-    zIndex: 10,
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1976d2',
-    marginTop: 48,
-    marginBottom: 12,
-    alignSelf: 'center',
-    letterSpacing: 0.5,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginBottom: 12,
-    width: '100%',
-  },
-  addButton: {
-    backgroundColor: '#1976d2',
-    borderRadius: 8,
-    padding: 10,
-  },
-  filterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-    width: '100%',
-  },
-  filterButton: {
-    flex: 1,
-    marginHorizontal: 3,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    padding: 8,
-    alignItems: 'center',
-  },
-  filterButtonText: {
-    color: '#1976d2',
-    fontWeight: 'bold',
-    fontSize: 15,
-  },
-  deviceGrid: {
-    flex: 1,
-    width: '100%',
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  deviceCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 18,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  deviceName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1976d2',
-    marginBottom: 2,
-  },
-  deviceMeta: {
-    fontSize: 14,
-    color: '#555',
-    marginBottom: 1,
-  },
-  deviceStatus: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 4,
-    textTransform: 'capitalize',
-  },
-  paginationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#888',
-    fontSize: 18,
-    marginTop: 32,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 22,
-    width: '90%',
-    maxHeight: '80%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1976d2',
-    marginBottom: 8,
-  },
-  modalText: {
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 8,
-  },
-  modalCloseButton: {
-    marginTop: 16,
-    backgroundColor: '#1976d2',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  modalCloseButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  pickerItem: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  pickerItemText: {
-    fontSize: 16,
-    color: '#333',
-  },
-});
-
-export default DevicesScreen;
-
-
-
-// Add onRefresh handler for FlatList
-const onRefresh = React.useCallback(() => {
-  setRefreshing(true);
-  // Simulate re-fetch by triggering a state change
-  setTimeout(() => {
-    setRefreshing(false);
-  }, 500);
-}, []);
-
+    const styles = StyleSheet.create({
+      container: {
+        flex: 1,
+        backgroundColor: '#f7f8fa',
+        paddingTop: 24,
+        paddingHorizontal: 16,
+      },
+      backButton: {
+        position: 'absolute',
+        top: 40,
+        left: 16,
+        zIndex: 10,
+        backgroundColor: '#fff',
+        borderRadius: 24,
+        padding: 4,
+        shadowColor: '#000',
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+        elevation: 2,
+      },
+      title: {
+        fontSize: 28,
+        fontWeight: 'bold',
+        color: '#1976d2',
+        marginTop: 48,
+        marginBottom: 12,
+        alignSelf: 'center',
+        letterSpacing: 0.5,
+      },
+      headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        marginBottom: 12,
+        width: '100%',
+      },
+      addButton: {
+        backgroundColor: '#1976d2',
+        borderRadius: 8,
+        padding: 10,
+      },
+      filterRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 10,
+        width: '100%',
+      },
+      filterButton: {
+        flex: 1,
+        marginHorizontal: 3,
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        padding: 8,
+        alignItems: 'center',
+      },
+      filterButtonText: {
+        color: '#1976d2',
+        fontWeight: 'bold',
+        fontSize: 15,
+      },
+      deviceGrid: {
+        flex: 1,
+        width: '100%',
+        alignItems: 'center',
+        marginTop: 24,
+      },
+      deviceCard: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 18,
+        marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 4,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+      },
+      deviceName: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#1976d2',
+        marginBottom: 2,
+      },
+      deviceMeta: {
+        fontSize: 14,
+        color: '#555',
+        marginBottom: 1,
+      },
+      deviceStatus: {
+        fontSize: 13,
+        fontWeight: '600',
+        marginTop: 4,
+        textTransform: 'capitalize',
+      },
+      paginationRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 12,
+        marginBottom: 8,
+      },
+      emptyText: {
+        textAlign: 'center',
+        color: '#888',
+        fontSize: 18,
+        marginTop: 32,
+      },
+      modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+      },
+      modalContent: {
+        backgroundColor: '#fff',
+        borderRadius: 14,
+        padding: 22,
+        width: '90%',
+        maxHeight: '80%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 4,
+      },
+      modalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#1976d2',
+        marginBottom: 8,
+      },
+      modalText: {
+        fontSize: 16,
+        color: '#333',
+        marginBottom: 8,
+      },
+      modalCloseButton: {
+        marginTop: 16,
+        backgroundColor: '#1976d2',
+        borderRadius: 8,
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        alignItems: 'center',
+      },
+      modalCloseButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 16,
+      },
+      pickerItem: {
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+      },
+      pickerItemText: {
+        fontSize: 16,
+        color: '#333',
+      },
+    });
+    
+    export default DevicesScreen;
+    
+    
+    
+    // Add onRefresh handler for FlatList
 

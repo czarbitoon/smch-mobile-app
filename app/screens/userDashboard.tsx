@@ -27,13 +27,13 @@ const UserDashboard = () => {
         <Text style={styles.profileEmail}>{user.email}</Text>
       </View>
       <View style={styles.menuSection}>
-        <TouchableOpacity style={[styles.menuButton, styles.card]} onPress={() => router.push('/(tabs)/devices')}>
+        <TouchableOpacity style={[styles.menuButton, styles.card, {backgroundColor: '#1976d2'}]} onPress={() => router.push('/(tabs)/devices')}>
           <Text style={styles.menuButtonText}>Devices</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.menuButton, styles.card]} onPress={() => router.push('/(tabs)/reports')}>
+        <TouchableOpacity style={[styles.menuButton, styles.card, {backgroundColor: '#1976d2'}]} onPress={() => router.push('/(tabs)/reports')}>
           <Text style={styles.menuButtonText}>Reports</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.menuButton, styles.card]} onPress={() => router.push('/(tabs)/profile')}>
+        <TouchableOpacity style={[styles.menuButton, styles.card, {backgroundColor: '#1976d2'}]} onPress={() => router.push('/(tabs)/profile')}>
           <Text style={styles.menuButtonText}>Profile</Text>
         </TouchableOpacity>
       </View>

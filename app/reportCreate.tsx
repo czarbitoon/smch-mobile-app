@@ -8,7 +8,7 @@ import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import useUserRole from './utils/useUserRole';
 import { Snackbar } from 'react-native-paper';
-import { API_URL } from "./utils/api";
+import { API_URL } from "../utils/api";
 
 export default function ReportCreate() {
   const router = useRouter();

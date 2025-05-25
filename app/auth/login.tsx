@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
    return config;
  });
 
-import { API_URL } from "../utils/api";
+ import { API_URL } from "../../utils/api";
 
 const LoginScreen = () => {
   const [email, setEmail] = useState("");

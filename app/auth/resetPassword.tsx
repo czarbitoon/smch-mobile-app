@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import axios from "axios";
-import { API_URL } from "../constants/theme";
+import { API_URL } from "../../utils/api";
 import { Ionicons } from '@expo/vector-icons';
 
 const ResetPassword = () => {

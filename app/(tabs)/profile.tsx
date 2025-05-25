@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import useUserRole from '../utils/useUserRole';
 
-import { API_URL } from "../utils/api";
+import { API_URL } from "../../utils/api";
 
 const Profile = () => {
   const router = useRouter();

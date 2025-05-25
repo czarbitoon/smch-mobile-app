@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import useUserRole from '../utils/useUserRole';
 
-import { API_URL } from "../utils/api";
+import { API_URL } from "../../utils/api";
 
 const OfficesScreen = () => {
   const router = useRouter();
