@@ -70,10 +70,19 @@ const OfficesScreen = () => {
   const paginatedOffices = offices.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const renderOfficeCard = ({ item }) => (
-    <View style={styles.officeCardGrid}>
+    <TouchableOpacity 
+      style={styles.officeCardGrid}
+      onPress={() => router.push(`/office/${item.id}`)}
+      activeOpacity={0.7}
+    >
       <Text style={styles.officeName}>{item.name}</Text>
-      <Button title="View Devices" onPress={() => router.push(`/office/${item.id}`)} color="#1976d2" />
-    </View>
+      <Text style={styles.officeDeviceCount}>
+        {item.devices_count || 0} devices
+      </Text>
+      <View style={styles.viewButton}>
+        <Text style={styles.viewButtonText}>View Devices</Text>
+      </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -155,18 +164,20 @@ const styles = StyleSheet.create({
   },
   officeCardGrid: {
     flex: 1,
-    minWidth: 100,
-    maxWidth: '30%',
-    backgroundColor: '#f5f5f5',
+    minWidth: 120,
+    maxWidth: '45%',
+    backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 12,
-    margin: 6,
+    padding: 16,
+    margin: 8,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
   title: {
     fontSize: 28,
@@ -187,9 +198,27 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   officeName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 4,
+    color: '#1976d2',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  officeDeviceCount: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 12,
+  },
+  viewButton: {
+    backgroundColor: '#1976d2',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  viewButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   officeLocation: {
     fontSize: 14,

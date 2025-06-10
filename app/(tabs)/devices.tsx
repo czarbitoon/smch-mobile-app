@@ -9,6 +9,17 @@ import useUserRole from '../utils/useUserRole';
 
 import { API_URL } from "../../utils/api";
 
+// Helper to convert status code to readable text
+const getStatusText = (status) => {
+  switch ((status || '').toLowerCase()) {
+    case 'resolved': return 'Resolved';
+    case 'pending': return 'Pending';
+    case 'repair': return 'Under Repair';
+    case 'decommissioned': return 'Decommissioned';
+    default: return 'Unknown';
+  }
+};
+
 // Custom hook for fetching with token and error handling
 const useFetchWithToken = (fetchFn, deps = []) => {
   const router = useRouter();
@@ -289,14 +300,7 @@ const DevicesScreen = () => {
   );
   const renderDeviceCard = ({ item }) => {
     const imageUrl = getDeviceImageUrl(item.image_url || item.image);
-    let imageProps = {
-      source: { uri: imageUrl },
-      style: { width: cardWidth * 0.9, height: cardWidth * 0.7, borderRadius: 10, resizeMode: 'cover', backgroundColor: '#f0f0f0' }
-    };
-    // Platform-specific placeholder handling
-    if (typeof window === 'undefined' || (typeof navigator !== 'undefined' && navigator.product !== 'ReactNativeWeb')) {
-      imageProps.defaultSource = require('../assets/default.png');
-    }
+    
     return (
       <TouchableOpacity
         style={[styles.deviceCard, { width: cardWidth, minHeight: cardWidth * 1.15 }]}
@@ -307,10 +311,26 @@ const DevicesScreen = () => {
         activeOpacity={0.85}
       >
         <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-          <Image {...imageProps} onError={(e) => { imageProps.source = require('../assets/default.png'); }} />
+          {imageUrl ? (
+            <Image
+              source={{ uri: imageUrl }}
+              style={{ width: cardWidth * 0.9, height: cardWidth * 0.7, borderRadius: 10, resizeMode: 'cover', backgroundColor: '#f0f0f0' }}
+              defaultSource={require('../assets/default.png')}
+              onError={() => console.log('Image load error for device:', item.name)}
+            />
+          ) : (
+            <View style={{ width: cardWidth * 0.9, height: cardWidth * 0.7, borderRadius: 10, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }}>
+              <Image
+                source={require('../assets/default.png')}
+                style={{ width: cardWidth * 0.5, height: cardWidth * 0.5, resizeMode: 'contain' }}
+              />
+            </View>
+          )}
         </View>
         <Text style={styles.deviceName} numberOfLines={2}>{item.name}</Text>
-        <Text style={[styles.deviceStatus, { color: getStatusColor(item.status) }]}>{item.status || 'Unknown'}</Text>
+        <Text style={styles.deviceType} numberOfLines={1}>{item.type?.name || 'Unknown Type'}</Text>
+        <Text style={[styles.deviceStatus, { color: getStatusColor(item.status) }]}>{getStatusText(item.status)}</Text>
+        <Text style={styles.deviceOffice} numberOfLines={1}>{item.office?.name || 'Unknown Office'}</Text>
       </TouchableOpacity>
     );
   };
@@ -459,7 +479,46 @@ const DevicesScreen = () => {
     </Modal>
   );
 
-  // Device edit modal
+  // Device modal rendering
+  const renderDeviceModal = () => (
+    <Modal
+      visible={showDeviceModal && !!selectedDevice}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowDeviceModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <TouchableOpacity style={{ position: 'absolute', top: 12, right: 12, zIndex: 10 }} onPress={() => setShowDeviceModal(false)}>
+            <Ionicons name="close" size={28} color="#1976d2" />
+          </TouchableOpacity>
+          {selectedDevice ? (
+            <>
+              <Image
+                source={{ uri: getDeviceImageUrl(selectedDevice.image_url || selectedDevice.image) }}
+                style={{ width: 180, height: 130, borderRadius: 12, alignSelf: 'center', marginBottom: 16, backgroundColor: '#f0f0f0' }}
+                resizeMode="cover"
+              />
+              <Text style={styles.modalTitle}>{selectedDevice.name}</Text>
+              <Text style={[styles.deviceStatus, { color: getStatusColor(selectedDevice.status), marginBottom: 8 }]}>{getStatusText(selectedDevice.status)}</Text>
+              <Text style={{ fontSize: 16, color: '#555', marginBottom: 8 }}>Type: {selectedDevice.type?.name || 'Unknown'}</Text>
+              <Text style={{ fontSize: 16, color: '#555', marginBottom: 8 }}>Office: {selectedDevice.office?.name || 'Unknown'}</Text>
+              <Text style={{ fontSize: 15, color: '#888', marginBottom: 8 }}>ID: {selectedDevice.id}</Text>
+              <Text style={{ fontSize: 15, color: '#888', marginBottom: 8 }}>Description: {selectedDevice.description || 'No description.'}</Text>
+              <TouchableOpacity style={[styles.editBtn, { marginTop: 12 }]} onPress={() => { setShowDeviceModal(false); navigation.navigate('ReportCreate', { device: selectedDevice }); }}>
+  <Text style={styles.editBtnText}>Report Device</Text>
+</TouchableOpacity>
+{userRole === 'admin' || userRole === 'superadmin' ? (
+  <TouchableOpacity style={[styles.editBtn, { marginTop: 12 }]} onPress={() => { setEditDeviceData(selectedDevice); setShowEditModal(true); setShowDeviceModal(false); }}>
+    <Text style={styles.editBtnText}>Edit Device</Text>
+  </TouchableOpacity>
+) : null}
+            </>
+          ) : null}
+        </View>
+      </View>
+    </Modal>
+  );
 const renderEditModal = () => {
   const [name, setName] = React.useState(editDeviceData?.name || "");
   const [categoryId, setCategoryId] = React.useState(editDeviceData?.device_category_id?.toString() || editDeviceData?.category?.id?.toString() || "");
@@ -684,7 +743,6 @@ const getDeviceTypeName = (device) => {
             {typeFilter ? (types.find(t => t.id === typeFilter)?.name || 'Type') : 'Type'}
           </Text>
         </TouchableOpacity>
-        // Office Filter Button (hide for staff/user)
         {(userRole === 'admin' || userRole === 'superadmin') && (
           <TouchableOpacity
             style={styles.filterButton}
@@ -718,7 +776,7 @@ const getDeviceTypeName = (device) => {
                 renderItem={renderDeviceCard}
                 contentContainerStyle={{ paddingBottom: 32 }}
                 numColumns={numColumns}
-                columnWrapperStyle={{ justifyContent: 'space-between', marginBottom: 16 }}
+                {...(numColumns > 1 ? { columnWrapperStyle: { justifyContent: 'space-between', marginBottom: 16 } } : {})}
                 ListEmptyComponent={<Text style={{ color: '#888', fontSize: 16, marginTop: 32, textAlign: 'center' }}>No devices found.</Text>}
                 refreshing={refreshing}
                 onRefresh={onRefresh}
@@ -837,6 +895,16 @@ const getDeviceTypeName = (device) => {
         fontWeight: '700',
         color: '#1976d2',
         marginBottom: 2,
+      },
+      deviceType: {
+        fontSize: 14,
+        color: '#666',
+        marginBottom: 2,
+      },
+      deviceOffice: {
+        fontSize: 12,
+        color: '#888',
+        marginTop: 2,
       },
       deviceMeta: {
         fontSize: 14,
