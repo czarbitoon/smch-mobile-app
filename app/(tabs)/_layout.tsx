@@ -11,6 +11,7 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { ThemeProvider } from '../constants/ThemeContext';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -64,44 +65,46 @@ export default function TabLayout() {
   }
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: { position: 'absolute' },
-          default: {},
-        }),
-      }}
-    >
-      {screens.map((screen) => (
-        <Tabs.Screen
-          key={screen.name}
-          name={screen.name}
-          options={{
-            title: screen.title,
-            tabBarIcon: ({ color, focused }) => (
-              <IconSymbol size={28} name={screen.icon} color={color} />
-            ),
-            tabBarLabelStyle: { fontWeight: '600', fontSize: 12 },
-            tabBarStyle: {
-              ...Platform.select({ ios: { position: 'absolute' }, default: {} }),
-              backgroundColor: '#f8f9fa',
-              borderTopWidth: 0.5,
-              borderTopColor: '#e0e0e0',
-              height: 60,
-              paddingBottom: Platform.OS === 'ios' ? 10 : 6,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: -2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 4,
-              elevation: 8,
-            },
-          }}
-        />
-      ))}
-    </Tabs>
+    <ThemeProvider>
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+          headerShown: false,
+          tabBarButton: HapticTab,
+          tabBarBackground: TabBarBackground,
+          tabBarStyle: Platform.select({
+            ios: { position: 'absolute' },
+            default: {},
+          }),
+        }}
+      >
+        {screens.map((screen) => (
+          <Tabs.Screen
+            key={screen.name}
+            name={screen.name}
+            options={{
+              title: screen.title,
+              tabBarIcon: ({ color, focused }) => (
+                <IconSymbol size={28} name={screen.icon} color={color} />
+              ),
+              tabBarLabelStyle: { fontWeight: '600', fontSize: 12 },
+              tabBarStyle: {
+                ...Platform.select({ ios: { position: 'absolute' }, default: {} }),
+                backgroundColor: '#f8f9fa',
+                borderTopWidth: 0.5,
+                borderTopColor: '#e0e0e0',
+                height: 60,
+                paddingBottom: Platform.OS === 'ios' ? 10 : 6,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: -2 },
+                shadowOpacity: 0.05,
+                shadowRadius: 4,
+                elevation: 8,
+              },
+            }}
+          />
+        ))}
+      </Tabs>
+    </ThemeProvider>
   );
 }
