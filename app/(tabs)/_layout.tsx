@@ -40,6 +40,7 @@ export default function TabLayout() {
       { name: 'offices', title: 'Offices', icon: 'building.2.fill' },
       { name: 'reports', title: 'Reports', icon: 'doc.text.fill' },
       { name: 'profile', title: 'Profile', icon: 'person.crop.circle' },
+      { name: 'settings', title: 'Settings', icon: 'settings' },
     ];
   } else if (role === 'staff') {
     screens = [
@@ -47,6 +48,7 @@ export default function TabLayout() {
       { name: 'devices', title: 'Devices', icon: 'desktopcomputer' },
       { name: 'reports', title: 'Reports', icon: 'doc.text.fill' },
       { name: 'profile', title: 'Profile', icon: 'person.crop.circle' },
+      { name: 'settings', title: 'Settings', icon: 'settings' },
     ];
   } else if (role === 'user') {
     screens = [
@@ -54,6 +56,7 @@ export default function TabLayout() {
       { name: 'devices', title: 'Devices', icon: 'desktopcomputer' },
       { name: 'reports', title: 'Reports', icon: 'doc.text.fill' },
       { name: 'profile', title: 'Profile', icon: 'person.crop.circle' },
+      { name: 'settings', title: 'Settings', icon: 'settings' },
     ];
   } else {
     // For unknown or unauthenticated roles, show only the Slot (child route)

@@ -1,10 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Button } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '../constants/ThemeContext';
 
 const UserDashboard = () => {
   const router = useRouter();
+  const { colors } = useTheme();
   // Placeholder user data; replace with context/provider logic
   const user = { name: 'User', email: 'user@example.com' };
 
@@ -14,27 +16,28 @@ const UserDashboard = () => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>User Dashboard</Text>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Text style={styles.logoutText}>Logout</Text>
+    <ScrollView contentContainerStyle={[styles.container, {backgroundColor: colors.background}]}> 
+      <View style={[styles.header, {marginBottom: 32}]}> 
+        <Text style={[styles.title, {fontSize: 30, fontWeight: 'bold', color: colors.primaryDark, letterSpacing: 1}]}>User Dashboard</Text>
+        <TouchableOpacity onPress={handleLogout} style={[styles.logoutButton, {elevation: 4, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: colors.error}]}> 
+          <Text style={[styles.logoutText, {fontSize: 16}]}>Logout</Text>
         </TouchableOpacity>
       </View>
-      <View style={styles.profileCard}>
-        <View style={styles.avatar} />
-        <Text style={styles.profileName}>{user.name}</Text>
-        <Text style={styles.profileEmail}>{user.email}</Text>
+      <View style={[styles.profileCard, {backgroundColor: colors.surface, borderRadius: 22, padding: 32, marginBottom: 36, shadowColor: colors.primaryDark}]}> 
+        <View style={[styles.avatar, {width: 96, height: 96, borderRadius: 48, backgroundColor: colors.primaryLight, marginBottom: 18, borderWidth: 3, borderColor: colors.primaryDark, elevation: 2}]} />
+        <Text style={[styles.profileName, {fontSize: 22, fontWeight: 'bold', color: colors.primaryDark, marginBottom: 4, letterSpacing: 0.2}]}>{user.name}</Text>
+        <Text style={[styles.profileEmail, {fontSize: 16, color: colors.textSecondary, marginBottom: 2}]}>{user.email}</Text>
       </View>
-      <View style={styles.menuSection}>
-        <TouchableOpacity style={[styles.menuButton, styles.card, {backgroundColor: '#1976d2'}]} onPress={() => router.push('/(tabs)/devices')}>
-          <Text style={styles.menuButtonText}>Devices</Text>
+      <View style={{width: '100%', borderBottomWidth: 2, borderBottomColor: colors.divider, marginBottom: 24}} />
+      <View style={[styles.menuSection, {gap: 16}]}> 
+        <TouchableOpacity style={[styles.menuButton, styles.card, {backgroundColor: colors.primaryDark, borderRadius: 16, paddingVertical: 22, marginBottom: 8, elevation: 3}]} onPress={() => router.push('/(tabs)/devices')}>
+          <Text style={[styles.menuButtonText, {fontSize: 18}]}>Devices</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.menuButton, styles.card, {backgroundColor: '#1976d2'}]} onPress={() => router.push('/(tabs)/reports')}>
-          <Text style={styles.menuButtonText}>Reports</Text>
+        <TouchableOpacity style={[styles.menuButton, styles.card, {backgroundColor: colors.primaryDark, borderRadius: 16, paddingVertical: 22, marginBottom: 8, elevation: 3}]} onPress={() => router.push('/(tabs)/reports')}>
+          <Text style={[styles.menuButtonText, {fontSize: 18}]}>Reports</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.menuButton, styles.card, {backgroundColor: '#1976d2'}]} onPress={() => router.push('/(tabs)/profile')}>
-          <Text style={styles.menuButtonText}>Profile</Text>
+        <TouchableOpacity style={[styles.menuButton, styles.card, {backgroundColor: colors.primaryDark, borderRadius: 16, paddingVertical: 22, marginBottom: 8, elevation: 3}]} onPress={() => router.push('/(tabs)/profile')}>
+          <Text style={[styles.menuButtonText, {fontSize: 18}]}>Profile</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

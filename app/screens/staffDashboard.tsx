@@ -14,30 +14,31 @@ const StaffDashboard = () => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Staff Dashboard</Text>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Text style={styles.logoutText}>Logout</Text>
+    <ScrollView contentContainerStyle={[styles.container, {backgroundColor: '#f4f6fa'}]}>
+      <View style={[styles.header, {marginBottom: 32}]}> 
+        <Text style={[styles.title, {fontSize: 30, fontWeight: 'bold', color: '#1976d2', letterSpacing: 1, textShadowColor: '#e3e7fa', textShadowOffset: {width: 0, height: 2}, textShadowRadius: 8}]}>Staff Dashboard</Text>
+        <TouchableOpacity onPress={handleLogout} style={[styles.logoutButton, {elevation: 4, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 10}]}> 
+          <Text style={[styles.logoutText, {fontSize: 16}]}>Logout</Text>
         </TouchableOpacity>
       </View>
-      <View style={styles.profileCard}>
-        <View style={styles.avatar} />
-        <Text style={styles.profileName}>{user.name}</Text>
-        <Text style={styles.profileEmail}>{user.email}</Text>
+      <View style={[styles.profileCard, {backgroundColor: '#fff', borderRadius: 22, padding: 32, marginBottom: 36, shadowColor: '#1976d2', shadowOpacity: 0.10, shadowRadius: 8, elevation: 6}]}> 
+        <View style={[styles.avatar, {width: 96, height: 96, borderRadius: 48, backgroundColor: '#90caf9', marginBottom: 18, borderWidth: 3, borderColor: '#1976d2', elevation: 2}]} />
+        <Text style={[styles.profileName, {fontSize: 22, fontWeight: 'bold', color: '#1976d2', marginBottom: 4, letterSpacing: 0.2}]}>{user.name}</Text>
+        <Text style={[styles.profileEmail, {fontSize: 16, color: '#666', marginBottom: 2}]}>{user.email}</Text>
       </View>
-      <View style={styles.menuSection}>
-        <TouchableOpacity style={[styles.menuButton, styles.card, {backgroundColor: '#1976d2'}]} onPress={() => router.push('/(tabs)/devices')}>
-          <Text style={styles.menuButtonText}>Devices</Text>
+      <View style={{width: '100%', borderBottomWidth: 2, borderBottomColor: '#e3e7fa', marginBottom: 24}} />
+      <View style={[styles.menuSection, {gap: 16}]}> 
+        <TouchableOpacity style={[styles.menuButton, styles.card, {backgroundColor: '#1976d2', borderRadius: 16, paddingVertical: 22, marginBottom: 8, elevation: 3}]} onPress={() => router.push('/(tabs)/devices')}>
+          <Text style={[styles.menuButtonText, {fontSize: 18}]}>Devices</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.menuButton, styles.card, {backgroundColor: '#1976d2'}]} onPress={() => router.push('/(tabs)/reports')}>
-          <Text style={styles.menuButtonText}>Reports</Text>
+        <TouchableOpacity style={[styles.menuButton, styles.card, {backgroundColor: '#1976d2', borderRadius: 16, paddingVertical: 22, marginBottom: 8, elevation: 3}]} onPress={() => router.push('/(tabs)/reports')}>
+          <Text style={[styles.menuButtonText, {fontSize: 18}]}>Reports</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.menuButton, styles.card, {backgroundColor: '#1976d2'}]} onPress={() => router.push('/(tabs)/profile')}>
-          <Text style={styles.menuButtonText}>Profile</Text>
+        <TouchableOpacity style={[styles.menuButton, styles.card, {backgroundColor: '#1976d2', borderRadius: 16, paddingVertical: 22, marginBottom: 8, elevation: 3}]} onPress={() => router.push('/(tabs)/profile')}>
+          <Text style={[styles.menuButtonText, {fontSize: 18}]}>Profile</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.menuButton, styles.card, {backgroundColor: '#1976d2'}]} onPress={() => router.push('/deviceCreate')}>
-          <Text style={styles.menuButtonText}>Add Device</Text>
+        <TouchableOpacity style={[styles.menuButton, styles.card, {backgroundColor: '#1976d2', borderRadius: 16, paddingVertical: 22, marginBottom: 8, elevation: 3}]} onPress={() => router.push('/deviceCreate')}>
+          <Text style={[styles.menuButtonText, {fontSize: 18}]}>Add Device</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

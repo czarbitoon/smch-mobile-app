@@ -58,6 +58,7 @@ const UserManagement = () => {
     fetchUsers();
   }, []);
 
+  // Optimistically update users after role change or deactivation
   const handleRoleChange = async (id, newRole) => {
     try {
       const token = await AsyncStorage.getItem("token");
@@ -70,7 +71,7 @@ const UserManagement = () => {
         { role: newRole },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      fetchUsers();
+      setUsers(users => users.map(u => u.id === id ? { ...u, user_role: newRole } : u));
     } catch (err) {
       if (err?.response?.status === 401) {
         Alert.alert("Error", "Unauthorized. Please login again.");
@@ -94,7 +95,7 @@ const UserManagement = () => {
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      fetchUsers();
+      setUsers(users => users.filter(u => u.id !== id));
     } catch (err) {
       if (err?.response?.status === 401) {
         Alert.alert("Error", "Unauthorized. Please login again.");

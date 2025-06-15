@@ -26,6 +26,7 @@ const ReportsScreen = () => {
   const [filterType, setFilterType] = useState("newest");
   const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [orderByCreated, setOrderByCreated] = useState('latest');
   const pageSize = 15;
 
   const fetchReports = async () => {
@@ -33,8 +34,11 @@ const ReportsScreen = () => {
     setError("");
     try {
       const token = await AsyncStorage.getItem('token');
+      const params = {};
+      params.order_by_created = orderByCreated;
       const response = await axios.get(`${API_URL}/reports`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        params
       });
       let reportsArr = [];
       if (response.data && response.data.data && Array.isArray(response.data.data.reports)) {
@@ -298,6 +302,11 @@ const ReportsScreen = () => {
     </TouchableOpacity>
   );
 
+  const sortOptions = [
+    { label: 'Latest', value: 'latest' },
+    { label: 'Earliest', value: 'earliest' },
+  ];
+
   return (
     <View style={styles.container}>
       <TouchableOpacity
@@ -338,13 +347,14 @@ const ReportsScreen = () => {
           <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>
             <Text style={{ marginRight: 8, fontWeight: 'bold' }}>Sort:</Text>
             <Picker
-              selectedValue={filterType}
+              selectedValue={orderByCreated}
               style={{ width: 140, height: 36 }}
-              onValueChange={setFilterType}
+              onValueChange={setOrderByCreated}
               mode="dropdown"
             >
-              <Picker.Item label="Newest" value="newest" />
-              <Picker.Item label="Oldest" value="oldest" />
+              {sortOptions.map(opt => (
+                <Picker.Item key={opt.value} label={opt.label} value={opt.value} />
+              ))}
             </Picker>
             <Text style={{ marginLeft: 16, marginRight: 8, fontWeight: 'bold' }}>Status:</Text>
             <Picker

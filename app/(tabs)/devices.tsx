@@ -86,6 +86,7 @@ const DevicesScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   // User office state
   const [userOfficeId, setUserOfficeId] = useState("");
+  const [orderByCreated, setOrderByCreated] = useState('latest');
 
   // DEBUG: Show current userRole
   // Remove or comment out after debugging
@@ -184,6 +185,7 @@ const DevicesScreen = () => {
     if (selectedOffice) params.office_id = selectedOffice;
     if (statusFilter) params.status = statusFilter;
     params.per_page = 200;
+    params.order_by_created = orderByCreated;
     const res = await axios.get(`${API_URL}/devices`, {
       headers: { Authorization: `Bearer ${token}` },
       params,
@@ -197,7 +199,7 @@ const DevicesScreen = () => {
       deviceArray = [];
     }
     return deviceArray;
-  }, [selectedCategory, typeFilter, selectedOffice, statusFilter]);
+  }, [selectedCategory, typeFilter, selectedOffice, statusFilter, orderByCreated]);
 
   // Fetch categories
   const { data: categories } = useFetchWithToken(async (token) => {
@@ -277,6 +279,11 @@ const DevicesScreen = () => {
     { label: 'Decommissioned', value: 'decommissioned' },
   ];
 
+  const sortOptions = [
+    { label: 'Latest', value: 'latest' },
+    { label: 'Earliest', value: 'earliest' },
+  ];
+
   // Device card rendering (inside FlatList renderItem or similar)
   const renderFilterBar = () => (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginHorizontal: 8 }}>
@@ -296,6 +303,17 @@ const DevicesScreen = () => {
         <Text style={styles.filterLabel}>Status</Text>
         <Text style={styles.filterValue}>{statusOptions.find(s => s.value == statusFilter)?.label || 'All'}</Text>
       </TouchableOpacity>
+      <Text style={{ marginRight: 8, fontWeight: 'bold' }}>Sort By:</Text>
+      <Picker
+        selectedValue={orderByCreated}
+        style={{ width: 120, height: 36 }}
+        onValueChange={setOrderByCreated}
+        mode="dropdown"
+      >
+        {sortOptions.map(opt => (
+          <Picker.Item key={opt.value} label={opt.label} value={opt.value} />
+        ))}
+      </Picker>
     </View>
   );
   const renderDeviceCard = ({ item }) => {
