@@ -1,20 +1,32 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
+  import React, { useEffect, useState } from "react";
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, Platform, Dimensions, TouchableOpacity } from "react-native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import useUserRole from '../utils/useUserRole';
 import { API_URL } from "../../utils/api";
+import GlobalLayout from '../components/GlobalLayout';
+import Card from '../components/Card';
 
+
+const { width } = Dimensions.get('window');
+
+type User = {
+  id: string | number;
+  name: string;
+  email: string;
+  user_role: string;
+  [key: string]: any;
+};
 
 const UserManagement = () => {
   const userRole = useUserRole();
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  // Remove this line:
+  const router = useRouter();
   
   const fetchUsers = async () => {
     setLoading(true);
@@ -39,16 +51,7 @@ const UserManagement = () => {
       });
       setUsers(res.data.data || res.data);
     } catch (err) {
-      if (err?.response?.status === 401) {
-        setError("Unauthorized. Please login again.");
-        setUsers([]);
-        await AsyncStorage.removeItem("token");
-      } else if (err?.response?.status === 403) {
-        setError("Forbidden. You do not have access to user management.");
-        setUsers([]);
-      } else {
-        setError(err.response?.data?.error || "Failed to fetch users.");
-      }
+      handleError(err);
     } finally {
       setLoading(false);
     }
@@ -58,32 +61,7 @@ const UserManagement = () => {
     fetchUsers();
   }, []);
 
-  // Optimistically update users after role change or deactivation
-  const handleRoleChange = async (id, newRole) => {
-    try {
-      const token = await AsyncStorage.getItem("token");
-      if (!token) {
-        Alert.alert("Error", "Unauthorized. Please login again.");
-        return;
-      }
-      await axios.put(
-        `${API_URL}/users/${id}/role`,
-        { role: newRole },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setUsers(users => users.map(u => u.id === id ? { ...u, user_role: newRole } : u));
-    } catch (err) {
-      if (err?.response?.status === 401) {
-        Alert.alert("Error", "Unauthorized. Please login again.");
-      } else if (err?.response?.status === 403) {
-        Alert.alert("Error", "Forbidden. You do not have access to change roles.");
-      } else {
-        Alert.alert("Error", err.response?.data?.error || "Failed to change role.");
-      }
-    }
-  };
-
-  const handleDeactivate = async (id) => {
+  const handleDeactivate = async (id: string | number) => {
     try {
       const token = await AsyncStorage.getItem("token");
       if (!token) {
@@ -97,171 +75,210 @@ const UserManagement = () => {
       );
       setUsers(users => users.filter(u => u.id !== id));
     } catch (err) {
-      if (err?.response?.status === 401) {
-        Alert.alert("Error", "Unauthorized. Please login again.");
-      } else if (err?.response?.status === 403) {
-        Alert.alert("Error", "Forbidden. You do not have access to deactivate users.");
-      } else {
-        Alert.alert("Error", err.response?.data?.error || "Failed to deactivate user.");
-      }
+      handleError(err);
     }
   };
 
-  const renderItem = ({ item }) => (
-    <View style={styles.card}>
-      <Text style={styles.name}>{item.name}</Text>
-      <Text style={styles.email}>{item.email}</Text>
-      <Text style={styles.role}>Role: {item.user_role}</Text>
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={styles.actionBtn}
-          onPress={() => handleRoleChange(item.id, item.user_role === 'admin' ? 'staff' : 'admin')}
-        >
-          <Text style={styles.actionText}>{item.user_role === 'admin' ? "Demote to Staff" : "Promote to Admin"}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: "#d32f2f" }]}
-          onPress={() => handleDeactivate(item.id)}
-        >
-          <Text style={styles.actionText}>Deactivate</Text>
-        </TouchableOpacity>
+  const handleUserPress = (user: User) => {
+    // Navigate to user details or edit screen in the future
+    Alert.alert('User', `${user.name}\n${user.email}\nRole: ${user.user_role}`);
+  };
+
+  const renderItem = ({ item }: { item: User }) => (
+    <Card onPress={() => handleUserPress(item)} style={styles.userCard}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.userName}>{item.name}</Text>
+        <Text style={styles.userEmail}>{item.email}</Text>
+        <Text style={styles.userRole}>Role: <Text style={styles.roleText}>{item.user_role}</Text></Text>
       </View>
-    </View>
+      <TouchableOpacity
+        style={styles.deactivateIcon}
+        onPress={() => handleDeactivate(item.id)}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Ionicons name="person-remove" size={22} color="#e53935" />
+      </TouchableOpacity>
+    </Card>
   );
+
+  const handleError = (err: any) => {
+    if (err?.response?.status === 401) {
+      setError("Unauthorized. Please login again.");
+      setUsers([]);
+      AsyncStorage.removeItem("token");
+    } else if (err?.response?.status === 403) {
+      setError("Forbidden. You do not have access to user management.");
+      setUsers([]);
+    } else {
+      setError(err.response?.data?.error || "Failed to fetch users.");
+    }
+  };
 
   if (loading) return <ActivityIndicator style={{ flex: 1 }} size="large" color="#1976d2" />;
   if (error) return <Text style={styles.error}>{error}</Text>;
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }} onPress={async () => {
-        if (userRole === 'admin' || userRole === 'superadmin') {
-          router.replace('/screens/adminDashboard');
-        } else if (userRole === 'staff') {
-          router.replace('/screens/staffDashboard');
-        } else if (userRole === 'user') {
-          router.replace('/screens/userDashboard');
-        } else {
-          router.replace('/(tabs)/index');
-        }
-      }} testID="back-btn">
-        <Ionicons name="arrow-back" size={28} color="#1976d2" />
+    <GlobalLayout
+      header={
+        <View style={styles.headerRow}>
+          <TouchableOpacity style={styles.backBtn} onPress={async () => {
+            if (userRole === 'admin' || userRole === 'superadmin') {
+              router.replace('/screens/adminDashboard');
+            } else if (userRole === 'staff') {
+              router.replace('/screens/staffDashboard');
+            } else if (userRole === 'user') {
+              router.replace('/screens/userDashboard');
+            }
+          }} testID="back-btn">
+            <Ionicons name="arrow-back" size={28} color="#1976d2" />
+          </TouchableOpacity>
+          <Text style={styles.header}>User Management</Text>
+        </View>
+      }
+      bottomNav={
+        <View style={styles.bottomNav}>
+          <TouchableOpacity style={styles.navBtn}><Text style={styles.navText}>Home</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.navBtn, styles.navBtnActive]}><Text style={[styles.navText, styles.navTextActive]}>Devices</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.navBtn}><Text style={styles.navText}>Offices</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.navBtn}><Text style={styles.navText}>Reports</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.navBtn}><Text style={styles.navText}>Profile</Text></TouchableOpacity>
+        </View>
+      }
+    >
+      <FlatList
+        data={users}
+        renderItem={renderItem}
+        keyExtractor={(item, idx) => idx.toString()}
+        contentContainerStyle={{ paddingVertical: 10, paddingBottom: 80 }}
+        showsVerticalScrollIndicator={false}
+      />
+      <TouchableOpacity style={styles.fab} onPress={() => Alert.alert('Add User', 'Add user action')}>
+        <Ionicons name="person-add" size={28} color="#fff" />
       </TouchableOpacity>
-      <Text style={styles.title}>User Management</Text>
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      {loading ? (
-        <ActivityIndicator style={styles.loadingIndicator} size="large" color="#1976d2" />
-      ) : (
-        <FlatList
-          data={users}
-          keyExtractor={item => item.id.toString()}
-          renderItem={renderItem}
-          refreshing={refreshing}
-          onRefresh={fetchUsers}
-          contentContainerStyle={{ paddingBottom: 40 }}
-        />
-      )}
-      <TouchableOpacity style={styles.refreshBtn} onPress={fetchUsers}>
-        <Text style={styles.refreshBtnText}>Refresh</Text>
-      </TouchableOpacity>
-    </View>
+    </GlobalLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f4f6fa',
-    padding: 20,
+  headerRow: {
+    width: '100%',
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingTop: 16,
+    paddingBottom: 8,
+    backgroundColor: '#f7f9fb',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    position: 'relative',
+    zIndex: 10,
+  },
+  backBtn: {
+    position: 'absolute',
+    left: 16,
+    top: 10,
+    zIndex: 20,
+    padding: 4,
   },
   header: {
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 28,
-    paddingHorizontal: 4,
-  },
-  title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#1976d2',
-    letterSpacing: 0.5,
-    marginBottom: 12,
-  },
-  userCard: {
-    width: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 22,
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.10,
-    shadowRadius: 8,
-    elevation: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginLeft: 8,
-  },
-  actionBtn: {
-    backgroundColor: '#1976d2',
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    marginLeft: 4,
-    shadowColor: '#1976d2',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.10,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  actionBtnText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 14,
-    letterSpacing: 0.2,
-  },
-  deactivateBtn: {
-    backgroundColor: '#e53935',
-    marginLeft: 8,
-    shadowColor: '#e53935',
-  },
-  errorText: {
-    color: '#e53935',
-    fontSize: 15,
-    marginBottom: 10,
+    color: '#1883e6',
     textAlign: 'center',
   },
-  loadingIndicator: {
-    marginTop: 40,
+  userCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 8,
+    marginVertical: 6,
+    padding: 18,
   },
-  refreshBtn: {
-    backgroundColor: '#1976d2',
-    paddingVertical: 8,
-    paddingHorizontal: 18,
-    borderRadius: 10,
-    alignSelf: 'center',
-    marginTop: 10,
-    shadowColor: '#1976d2',
-    shadowOffset: { width: 0, height: 2 },
+  userName: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginBottom: 2,
+  },
+  userEmail: {
+    color: '#555',
+    fontSize: 13,
+    marginBottom: 2,
+  },
+  userRole: {
+    fontSize: 12,
+    color: '#1883e6',
+  },
+  roleText: {
+    color: '#1883e6',
+    textDecorationLine: 'underline',
+  },
+  deactivateIcon: {
+    marginLeft: 16,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    shadowColor: '#e53935',
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.10,
-    shadowRadius: 4,
+    shadowRadius: 2,
     elevation: 2,
   },
-  refreshBtnText: {
-    color: '#fff',
+  fab: {
+    position: 'absolute',
+    right: 24,
+    bottom: 80,
+    backgroundColor: '#1883e6',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#1883e6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 100,
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    width: '100%',
+    height: 56,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  navBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+  },
+  navBtnActive: {
+    borderBottomWidth: 3,
+    borderBottomColor: '#1883e6',
+  },
+  navText: {
+    color: '#888',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  navTextActive: {
+    color: '#1883e6',
+    fontWeight: 'bold',
+  },
+  error: {
+    color: '#e53935',
     fontWeight: 'bold',
     fontSize: 15,
-    letterSpacing: 0.2,
+    marginVertical: 12,
+    textAlign: 'center',
   },
 });
 

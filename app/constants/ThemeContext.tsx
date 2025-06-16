@@ -12,14 +12,21 @@ const darkColors = {
   divider: '#333',
 };
 
-const ThemeContext = createContext({
+interface ThemeContextType {
+  darkMode: boolean;
+  setDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
+  colors: typeof lightColors;
+  theme: typeof theme & { colors: typeof lightColors };
+}
+
+const ThemeContext = createContext<ThemeContextType>({
   darkMode: false,
   setDarkMode: () => {},
   colors: lightColors,
-  theme,
+  theme: { ...theme, colors: lightColors },
 });
 
-export const ThemeProvider = ({ children }) => {
+export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
@@ -55,3 +62,4 @@ export const ThemeProvider = ({ children }) => {
 };
 
 export const useTheme = () => useContext(ThemeContext);
+export default ThemeContext;

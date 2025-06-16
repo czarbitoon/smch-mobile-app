@@ -1,8 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../constants/ThemeContext';
+import GlobalLayout from '../components/GlobalLayout';
+import Card from '../components/Card';
 
 const UserDashboard = () => {
   const router = useRouter();
@@ -15,32 +17,44 @@ const UserDashboard = () => {
     router.replace('/auth/login');
   };
 
+  // Card navigation handlers
+  const handleCardPress = (route: any) => {
+    router.push(route);
+  };
+
   return (
-    <ScrollView contentContainerStyle={[styles.container, {backgroundColor: colors.background}]}> 
-      <View style={[styles.header, {marginBottom: 32}]}> 
-        <Text style={[styles.title, {fontSize: 30, fontWeight: 'bold', color: colors.primaryDark, letterSpacing: 1}]}>User Dashboard</Text>
-        <TouchableOpacity onPress={handleLogout} style={[styles.logoutButton, {elevation: 4, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: colors.error}]}> 
-          <Text style={[styles.logoutText, {fontSize: 16}]}>Logout</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={[styles.profileCard, {backgroundColor: colors.surface, borderRadius: 22, padding: 32, marginBottom: 36, shadowColor: colors.primaryDark}]}> 
-        <View style={[styles.avatar, {width: 96, height: 96, borderRadius: 48, backgroundColor: colors.primaryLight, marginBottom: 18, borderWidth: 3, borderColor: colors.primaryDark, elevation: 2}]} />
-        <Text style={[styles.profileName, {fontSize: 22, fontWeight: 'bold', color: colors.primaryDark, marginBottom: 4, letterSpacing: 0.2}]}>{user.name}</Text>
-        <Text style={[styles.profileEmail, {fontSize: 16, color: colors.textSecondary, marginBottom: 2}]}>{user.email}</Text>
-      </View>
-      <View style={{width: '100%', borderBottomWidth: 2, borderBottomColor: colors.divider, marginBottom: 24}} />
-      <View style={[styles.menuSection, {gap: 16}]}> 
-        <TouchableOpacity style={[styles.menuButton, styles.card, {backgroundColor: colors.primaryDark, borderRadius: 16, paddingVertical: 22, marginBottom: 8, elevation: 3}]} onPress={() => router.push('/(tabs)/devices')}>
-          <Text style={[styles.menuButtonText, {fontSize: 18}]}>Devices</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.menuButton, styles.card, {backgroundColor: colors.primaryDark, borderRadius: 16, paddingVertical: 22, marginBottom: 8, elevation: 3}]} onPress={() => router.push('/(tabs)/reports')}>
-          <Text style={[styles.menuButtonText, {fontSize: 18}]}>Reports</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.menuButton, styles.card, {backgroundColor: colors.primaryDark, borderRadius: 16, paddingVertical: 22, marginBottom: 8, elevation: 3}]} onPress={() => router.push('/(tabs)/profile')}>
-          <Text style={[styles.menuButtonText, {fontSize: 18}]}>Profile</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+    <GlobalLayout
+      header={
+        <View style={styles.headerRow}>
+          <Text style={styles.header}>User Dashboard</Text>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
+      }
+      bottomNav={
+        <View style={styles.bottomNav}>
+          <TouchableOpacity style={styles.navBtn}><Text style={styles.navText}>Home</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.navBtn, styles.navBtnActive]}><Text style={[styles.navText, styles.navTextActive]}>Dashboard</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.navBtn}><Text style={styles.navText}>Devices</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.navBtn}><Text style={styles.navText}>Reports</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.navBtn}><Text style={styles.navText}>Profile</Text></TouchableOpacity>
+        </View>
+      }
+    >
+      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
+        <Card style={styles.profileCard}>
+          <View style={[styles.avatar, { width: 96, height: 96, borderRadius: 48, backgroundColor: colors.primaryLight, marginBottom: 18, borderWidth: 3, borderColor: colors.primaryDark, elevation: 2 }]} />
+          <Text style={[styles.profileName, { fontSize: 22, fontWeight: 'bold', color: colors.primaryDark, marginBottom: 4, letterSpacing: 0.2 }]}>{user.name}</Text>
+          <Text style={[styles.profileEmail, { fontSize: 16, color: colors.textSecondary, marginBottom: 2 }]}>{user.email}</Text>
+        </Card>
+        <View style={styles.widgetCol}>
+          <Card onPress={() => handleCardPress('/(tabs)/devices')} style={styles.widget}><Text style={styles.widgetTitle}>Devices</Text></Card>
+          <Card onPress={() => handleCardPress('/(tabs)/reports')} style={styles.widget}><Text style={styles.widgetTitle}>Reports</Text></Card>
+          <Card onPress={() => handleCardPress('/(tabs)/profile')} style={styles.widget}><Text style={styles.widgetTitle}>Profile</Text></Card>
+        </View>
+      </ScrollView>
+    </GlobalLayout>
   );
 };
 
@@ -51,7 +65,7 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
   },
-  header: {
+  headerRow: {
     width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -59,7 +73,7 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     paddingHorizontal: 4,
   },
-  title: {
+  header: {
     fontSize: 30,
     fontWeight: 'bold',
     color: '#1976d2',
@@ -70,11 +84,20 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 18,
     borderRadius: 10,
-    shadowColor: '#e53935',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 3,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 8px rgba(229,57,53,0.10)',
+      },
+      ios: {
+        shadowColor: '#e53935',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.12,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   logoutText: {
     color: '#fff',
@@ -89,11 +112,20 @@ const styles = StyleSheet.create({
     padding: 28,
     alignItems: 'center',
     marginBottom: 36,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.10,
-    shadowRadius: 8,
-    elevation: 4,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
+      },
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.10,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   avatar: {
     width: 72,
@@ -116,41 +148,91 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 2,
   },
-  menuSection: {
+  widgetCol: {
     width: '100%',
-    marginTop: 18,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
+    flexDirection: 'column',
+    gap: 16,
+    marginBottom: 12,
   },
-  menuButton: {
+  widget: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    marginHorizontal: 2,
-    marginBottom: 8,
-    borderRadius: 16,
-    backgroundColor: '#1976d2',
-    shadowColor: '#1976d2',
+    paddingVertical: 24,
+    borderRadius: 18,
+    marginVertical: 4,
+    backgroundColor: '#e3e7fa',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.10,
+    shadowOpacity: 0.07,
     shadowRadius: 4,
     elevation: 2,
+    ...Platform.select({
+      android: {
+        borderless: false,
+      },
+    }),
   },
-  menuButtonText: {
-    color: '#fff',
+  widgetTitle: {
+    fontSize: 18,
+    color: '#1976d2',
     fontWeight: 'bold',
-    fontSize: 17,
+    marginBottom: 2,
     letterSpacing: 0.2,
   },
   card: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    borderRadius: 18,
+    marginVertical: 4,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 8px rgba(25,118,210,0.10)',
+      },
+      ios: {
+        shadowColor: '#1976d2',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.10,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    height: 60,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  navBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  navText: {
+    fontSize: 14,
+    color: '#757575',
+  },
+  navBtnActive: {
+    backgroundColor: '#e3f2fd',
+    borderRadius: 12,
+  },
+  navTextActive: {
+    color: '#1976d2',
+    fontWeight: 'bold',
   },
 });
 

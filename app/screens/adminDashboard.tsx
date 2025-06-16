@@ -1,24 +1,24 @@
-import React from 'react';
-import { View, Text, StyleSheet, Button, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { API_URL } from "../../utils/api";
+import { API_URL } from '../../utils/api';
+import GlobalLayout from '../components/GlobalLayout';
+import Card from '../components/Card';
 
 const AdminDashboard = () => {
   const router = useRouter();
-  // Placeholder user data; replace with context/provider logic
-  const user = { name: 'Admin', email: 'admin@example.com' };
+  const user = { name: 'Admin', email: 'admin@example.com' }; // Placeholder user data
   const [stats, setStats] = useState({ users: 0, devices: 0, reports: 0, offices: 0 });
   const [loadingStats, setLoadingStats] = useState(true);
-    useEffect(() => {
+
+  useEffect(() => {
     const fetchStats = async () => {
       setLoadingStats(true);
       try {
         const token = await AsyncStorage.getItem('token');
         const res = await axios.get(`${API_URL}/admin/stats`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-        // Defensive: handle possible response shapes
         if (res.data && typeof res.data === 'object') {
           if (res.data.stats) {
             setStats({
@@ -52,34 +52,44 @@ const AdminDashboard = () => {
     router.replace('/auth/login');
   };
 
+  const handleCardPress = (route) => {
+    router.push(route);
+  };
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Admin Dashboard</Text>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.profileCard}>
-        <View style={styles.avatar} />
-        <Text style={styles.profileName}>{user.name}</Text>
-        <Text style={styles.profileEmail}>{user.email}</Text>
-      </View>
-      <View style={styles.widgetRow}>
-        <View style={[styles.widget, styles.card, {backgroundColor: '#e3e7fa'}]}><Text style={styles.widgetTitle}>Users</Text><Text style={styles.widgetValue}>{loadingStats ? '...' : stats.users}</Text></View>
-        <View style={[styles.widget, styles.card, {backgroundColor: '#e3e7fa'}]}><Text style={styles.widgetTitle}>Devices</Text><Text style={styles.widgetValue}>{loadingStats ? '...' : stats.devices}</Text></View>
-      </View>
-      <View style={styles.widgetRow}>
-        <View style={[styles.widget, styles.card, {backgroundColor: '#e3e7fa'}]}><Text style={styles.widgetTitle}>Reports</Text><Text style={styles.widgetValue}>{loadingStats ? '...' : stats.reports}</Text></View>
-        <View style={[styles.widget, styles.card, {backgroundColor: '#e3e7fa'}]}><Text style={styles.widgetTitle}>Offices</Text><Text style={styles.widgetValue}>{loadingStats ? '...' : stats.offices}</Text></View>
-      </View>
-      <View style={styles.menuSection}>
-        <TouchableOpacity style={[styles.menuButton, styles.card]} onPress={() => router.push('/(tabs)/devices')}><Text style={styles.menuButtonText}>Devices</Text></TouchableOpacity>
-        <TouchableOpacity style={[styles.menuButton, styles.card]} onPress={() => router.push('/(tabs)/offices')}><Text style={styles.menuButtonText}>Offices</Text></TouchableOpacity>
-        <TouchableOpacity style={[styles.menuButton, styles.card]} onPress={() => router.push('/(tabs)/reports')}><Text style={styles.menuButtonText}>Reports</Text></TouchableOpacity>
-        <TouchableOpacity style={[styles.menuButton, styles.card]} onPress={() => router.push('/screens/userManagement')}><Text style={styles.menuButtonText}>Users</Text></TouchableOpacity>
-      </View>
-    </ScrollView>
+    <GlobalLayout
+      header={
+        <View style={styles.headerRow}>
+          <Text style={styles.header}>Admin Dashboard</Text>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
+      }
+      bottomNav={
+        <View style={styles.bottomNav}>
+          <TouchableOpacity style={styles.navBtn}><Text style={styles.navText}>Home</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.navBtn, styles.navBtnActive]}><Text style={[styles.navText, styles.navTextActive]}>Dashboard</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.navBtn}><Text style={styles.navText}>Devices</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.navBtn}><Text style={styles.navText}>Reports</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.navBtn}><Text style={styles.navText}>Profile</Text></TouchableOpacity>
+        </View>
+      }
+    >
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <Card style={styles.profileCard}>
+          <View style={styles.avatar} />
+          <Text style={styles.profileName}>{user.name}</Text>
+          <Text style={styles.profileEmail}>{user.email}</Text>
+        </Card>
+        <View style={styles.widgetCol}>
+          <Card onPress={() => handleCardPress('/screens/userManagement')} style={styles.widget}><Text style={styles.widgetTitle}>Users</Text><Text style={styles.widgetValue}>{loadingStats ? '...' : stats.users}</Text></Card>
+          <Card onPress={() => handleCardPress('/(tabs)/devices')} style={styles.widget}><Text style={styles.widgetTitle}>Devices</Text><Text style={styles.widgetValue}>{loadingStats ? '...' : stats.devices}</Text></Card>
+          <Card onPress={() => handleCardPress('/(tabs)/reports')} style={styles.widget}><Text style={styles.widgetTitle}>Reports</Text><Text style={styles.widgetValue}>{loadingStats ? '...' : stats.reports}</Text></Card>
+          <Card onPress={() => handleCardPress('/(tabs)/offices')} style={styles.widget}><Text style={styles.widgetTitle}>Offices</Text><Text style={styles.widgetValue}>{loadingStats ? '...' : stats.offices}</Text></Card>
+        </View>
+      </ScrollView>
+    </GlobalLayout>
   );
 };
 
@@ -90,7 +100,7 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
   },
-  header: {
+  headerRow: {
     width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -98,7 +108,7 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     paddingHorizontal: 4,
   },
-  title: {
+  header: {
     fontSize: 30,
     fontWeight: 'bold',
     color: '#1976d2',
@@ -155,25 +165,30 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 2,
   },
-  widgetRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  widgetCol: {
     width: '100%',
-    marginBottom: 14,
-    gap: 12,
+    flexDirection: 'column',
+    gap: 16,
+    marginBottom: 12,
   },
   widget: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 18,
-    borderRadius: 16,
-    marginHorizontal: 2,
+    paddingVertical: 24,
+    borderRadius: 18,
+    marginVertical: 4,
     backgroundColor: '#e3e7fa',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.07,
     shadowRadius: 4,
     elevation: 2,
+    // Add ripple/touch feedback for Android
+    ...Platform.select({
+      android: {
+        borderless: false,
+      },
+    }),
   },
   widgetTitle: {
     fontSize: 16,
@@ -188,41 +203,32 @@ const styles = StyleSheet.create({
     color: '#222',
     letterSpacing: 0.2,
   },
-  menuSection: {
-    width: '100%',
-    marginTop: 18,
+  bottomNav: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    height: 60,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
   },
-  menuButton: {
+  navBtn: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    marginHorizontal: 2,
-    marginBottom: 8,
-    borderRadius: 16,
-    backgroundColor: '#1976d2',
-    shadowColor: '#1976d2',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.10,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingVertical: 10,
   },
-  menuButtonText: {
-    color: '#fff',
+  navBtnActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#1976d2',
+  },
+  navText: {
+    fontSize: 14,
+    color: '#555',
+  },
+  navTextActive: {
+    color: '#1976d2',
     fontWeight: 'bold',
-    fontSize: 17,
-    letterSpacing: 0.2,
-  },
-  card: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
   },
 });
 
