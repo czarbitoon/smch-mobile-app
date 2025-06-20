@@ -20,12 +20,41 @@ const getStatusText = (status) => {
   }
 };
 
+// Add types for Device, Category, Type, Office
+interface DeviceType {
+  id: string | number;
+  name: string;
+}
+interface DeviceCategory {
+  id: string | number;
+  name: string;
+  types?: DeviceType[];
+}
+interface Office {
+  id: string | number;
+  name: string;
+}
+interface Device {
+  id: string | number;
+  name: string;
+  image_url?: string;
+  image?: string;
+  type?: DeviceType;
+  device_type_id?: string | number;
+  category?: DeviceCategory;
+  device_category_id?: string | number;
+  office?: Office;
+  office_id?: string | number;
+  status?: string;
+  description?: string;
+}
+
 // Custom hook for fetching with token and error handling
-const useFetchWithToken = (fetchFn, deps = []) => {
+const useFetchWithToken = <T = any>(fetchFn: (token: string) => Promise<T>, deps: any[] = []) => {
   const router = useRouter();
-  const [data, setData] = useState([]);
+  const [data, setData] = useState<T>([] as unknown as T);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let isMounted = true;
     const fetchData = async () => {
@@ -41,7 +70,7 @@ const useFetchWithToken = (fetchFn, deps = []) => {
         }
         const result = await fetchFn(token);
         if (isMounted) setData(result);
-      } catch (e) {
+      } catch (e: any) {
         if (e?.response?.status === 401) {
           setError('Session expired. Please login again.');
           await AsyncStorage.removeItem('token');
@@ -49,7 +78,7 @@ const useFetchWithToken = (fetchFn, deps = []) => {
         } else {
           setError('Failed to fetch data');
         }
-        if (isMounted) setData([]);
+        if (isMounted) setData([] as unknown as T);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -63,21 +92,21 @@ const useFetchWithToken = (fetchFn, deps = []) => {
 const DevicesScreen = () => {
   const router = useRouter();
    // Filter state
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [selectedOffice, setSelectedOffice] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [typeFilter, setTypeFilter] = useState<string>("");
+  const [selectedOffice, setSelectedOffice] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 9;
   // Modal state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showTypeModal, setShowTypeModal] = useState(false);
   const [showOfficeModal, setShowOfficeModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
-  const [selectedDevice, setSelectedDevice] = useState(null);
+  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
+  const [editDeviceData, setEditDeviceData] = useState<Device | null>(null);
   const [showDeviceModal, setShowDeviceModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editDeviceData, setEditDeviceData] = useState(null);
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState("");
   // Admin role state
@@ -85,8 +114,8 @@ const DevicesScreen = () => {
   // Refresh state for FlatList
   const [refreshing, setRefreshing] = useState(false);
   // User office state
-  const [userOfficeId, setUserOfficeId] = useState("");
-  const [orderByCreated, setOrderByCreated] = useState('latest');
+  const [userOfficeId, setUserOfficeId] = useState<string>("");
+  const [orderByCreated, setOrderByCreated] = useState<string>('latest');
 
   // DEBUG: Show current userRole
   // Remove or comment out after debugging
@@ -134,13 +163,14 @@ const DevicesScreen = () => {
   }, []);
   // Calculate card size for responsive grid
   const windowWidth = Dimensions.get('window').width;
-  const horizontalPadding = 32;
-  const cardSpacing = 16;
-  const numColumns = windowWidth < 600 ? 1 : windowWidth < 900 ? 2 : 3;
-  const cardWidth = (windowWidth - horizontalPadding - cardSpacing * (numColumns - 1)) / numColumns;
+  const isSmallScreen = windowWidth < 600;
+  const horizontalPadding = 12;
+  const cardSpacing = 10;
+  const numColumns = 1; // Always 1 column for mobile
+  const cardWidth = windowWidth - horizontalPadding * 2;
 
   // Helper functions
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch ((status || '').toLowerCase()) {
       case 'resolved': return '#388e3c';
       case 'pending': return '#fbc02d';
@@ -161,7 +191,7 @@ const DevicesScreen = () => {
 
 
   // Helper to get full image URL from storage path
-  const getDeviceImageUrl = (imgPath) => {
+  const getDeviceImageUrl = (imgPath: string) => {
     if (!imgPath || imgPath === 'default.png' || imgPath === 'default_device.jpg') {
       let apiBase = API_URL.replace(/\/?api\/?$/, '');
       apiBase = apiBase.replace(/^https:\/\/localhost:8000/i, 'http://localhost:8000');
@@ -178,8 +208,8 @@ const DevicesScreen = () => {
   };
 
   // Fetch devices
-  const { data: devices, loading, error } = useFetchWithToken(async (token) => {
-    const params = {};
+  const { data: devices, loading, error } = useFetchWithToken<Device[]>(async (token: string) => {
+    const params: any = {};
     if (selectedCategory) params.device_category_id = selectedCategory;
     if (typeFilter) params.device_type_id = typeFilter;
     if (selectedOffice) params.office_id = selectedOffice;
@@ -190,7 +220,7 @@ const DevicesScreen = () => {
       headers: { Authorization: `Bearer ${token}` },
       params,
     });
-    let deviceArray = [];
+    let deviceArray: Device[] = [];
     if (res.data && res.data.data && Array.isArray(res.data.data.data)) {
       deviceArray = res.data.data.data;
     } else if (Array.isArray(res.data.data)) {
@@ -202,11 +232,11 @@ const DevicesScreen = () => {
   }, [selectedCategory, typeFilter, selectedOffice, statusFilter, orderByCreated]);
 
   // Fetch categories
-  const { data: categories } = useFetchWithToken(async (token) => {
+  const { data: categories } = useFetchWithToken<DeviceCategory[]>(async (token: string) => {
     const categoriesRes = await axios.get(`${API_URL}/device-categories`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    let categoriesArr = [];
+    let categoriesArr: DeviceCategory[] = [];
     if (categoriesRes.data && categoriesRes.data.data && Array.isArray(categoriesRes.data.data.categories)) {
       categoriesArr = categoriesRes.data.data.categories;
     } else if (categoriesRes.data && Array.isArray(categoriesRes.data.categories)) {
@@ -220,7 +250,7 @@ const DevicesScreen = () => {
   }, []);
 
   // Fetch types
-  const { data: types } = useFetchWithToken(async (token) => {
+  const { data: types } = useFetchWithToken<DeviceType[]>(async (token: string) => {
     if (!selectedCategory) return [];
     const typesRes = await axios.get(`${API_URL}/device-categories/${selectedCategory}/types`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -235,7 +265,7 @@ const DevicesScreen = () => {
   }, [selectedCategory]);
 
   // Fetch offices
-  const { data: offices } = useFetchWithToken(async (token) => {
+  const { data: offices } = useFetchWithToken<Office[]>(async (token: string) => {
     const res = await axios.get(`${API_URL}/offices`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -286,69 +316,71 @@ const DevicesScreen = () => {
 
   // Device card rendering (inside FlatList renderItem or similar)
   const renderFilterBar = () => (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginHorizontal: 8 }}>
-      <TouchableOpacity style={styles.filterBox} onPress={() => setShowCategoryModal(true)}>
-        <Text style={styles.filterLabel}>Category</Text>
-        <Text style={styles.filterValue}>{categories.find(c => c.id == selectedCategory)?.name || 'All'}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.filterBox} onPress={() => setShowTypeModal(true)}>
-        <Text style={styles.filterLabel}>Type</Text>
-        <Text style={styles.filterValue}>{types.find(t => t.id == typeFilter)?.name || 'All'}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.filterBox} onPress={() => setShowOfficeModal(true)} disabled={userRole !== 'admin' && userRole !== 'superadmin'}>
-        <Text style={styles.filterLabel}>Office</Text>
-        <Text style={styles.filterValue}>{offices.find(o => o.id == selectedOffice)?.name || 'All'}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.filterBox} onPress={() => setShowStatusModal(true)}>
-        <Text style={styles.filterLabel}>Status</Text>
-        <Text style={styles.filterValue}>{statusOptions.find(s => s.value == statusFilter)?.label || 'All'}</Text>
-      </TouchableOpacity>
-      <Text style={{ marginRight: 8, fontWeight: 'bold' }}>Sort By:</Text>
-      <Picker
-        selectedValue={orderByCreated}
-        style={{ width: 120, height: 36 }}
-        onValueChange={setOrderByCreated}
-        mode="dropdown"
-      >
-        {sortOptions.map(opt => (
-          <Picker.Item key={opt.value} label={opt.label} value={opt.value} />
-        ))}
-      </Picker>
+    <View style={{ flexDirection: 'column', gap: 10, paddingHorizontal: 8, paddingBottom: 8 }}>
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 6 }}>
+        <TouchableOpacity style={styles.filterButtonMobile} onPress={() => setShowCategoryModal(true)}>
+          <Text style={styles.filterButtonText}>{selectedCategory ? (categories.find(c => c.id === selectedCategory)?.name || 'Category') : 'Category'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.filterButtonMobile} onPress={() => setShowTypeModal(true)}>
+          <Text style={styles.filterButtonText}>{typeFilter ? (types.find(t => t.id === typeFilter)?.name || 'Type') : 'Type'}</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 6 }}>
+        {(userRole === 'admin' || userRole === 'superadmin') && (
+          <TouchableOpacity style={styles.filterButtonMobile} onPress={() => setShowOfficeModal(true)}>
+            <Ionicons name="business" size={18} color="#1976d2" style={{ marginRight: 6 }} />
+            <Text style={styles.filterButtonText} numberOfLines={1}>{selectedOffice ? (offices.find(o => o.id?.toString() === selectedOffice?.toString())?.name || 'Office') : 'Office'}</Text>
+            <Ionicons name="chevron-down" size={16} color="#1976d2" style={{ marginLeft: 2 }} />
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity style={styles.filterButtonMobile} onPress={() => setShowStatusModal(true)}>
+          <Text style={styles.filterButtonText}>{statusFilter ? (statusOptions.find(s => s.value === statusFilter)?.label || 'Status') : 'Status'}</Text>
+        </TouchableOpacity>
+        <View style={styles.filterButtonMobile}>
+          <Picker
+            selectedValue={orderByCreated}
+            style={{ width: 110, height: 36, color: '#1976d2' }}
+            onValueChange={setOrderByCreated}
+            mode="dropdown"
+          >
+            {sortOptions.map(opt => (
+              <Picker.Item key={opt.value} label={opt.label} value={opt.value} />
+            ))}
+          </Picker>
+        </View>
+      </View>
     </View>
   );
+
   const renderDeviceCard = ({ item }) => {
     const imageUrl = getDeviceImageUrl(item.image_url || item.image);
-    
     return (
       <TouchableOpacity
-        style={[styles.deviceCard, { width: cardWidth, minHeight: cardWidth * 1.15 }]}
+        style={[styles.deviceCardMobile, { width: cardWidth, minHeight: cardWidth * 0.7 }]}
         onPress={() => {
           setSelectedDevice(item);
           setShowDeviceModal(true);
         }}
         activeOpacity={0.85}
       >
-        <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+        <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
           {imageUrl ? (
             <Image
               source={{ uri: imageUrl }}
-              style={{ width: cardWidth * 0.9, height: cardWidth * 0.7, borderRadius: 10, resizeMode: 'cover', backgroundColor: '#f0f0f0' }}
+              style={styles.deviceImageMobile}
               defaultSource={require('../assets/default.png')}
               onError={() => console.log('Image load error for device:', item.name)}
             />
-          ) : (
-            <View style={{ width: cardWidth * 0.9, height: cardWidth * 0.7, borderRadius: 10, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }}>
-              <Image
-                source={require('../assets/default.png')}
-                style={{ width: cardWidth * 0.5, height: cardWidth * 0.5, resizeMode: 'contain' }}
-              />
-            </View>
-          )}
+          ) : null}
         </View>
-        <Text style={styles.deviceName} numberOfLines={2}>{item.name}</Text>
-        <Text style={styles.deviceType} numberOfLines={1}>{item.type?.name || 'Unknown Type'}</Text>
-        <Text style={[styles.deviceStatus, { color: getStatusColor(item.status) }]}>{getStatusText(item.status)}</Text>
-        <Text style={styles.deviceOffice} numberOfLines={1}>{item.office?.name || 'Unknown Office'}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+          <Text style={styles.deviceNameMobile} numberOfLines={2}>{item.name}</Text>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+            <Text style={styles.statusBadgeText}>{getStatusText(item.status)}</Text>
+          </View>
+        </View>
+        <Text style={styles.deviceTypeMobile} numberOfLines={1}>{item.type?.name || 'Unknown Type'}</Text>
+        <Text style={styles.deviceOfficeMobile} numberOfLines={1}>{item.office?.name || 'Unknown Office'}</Text>
       </TouchableOpacity>
     );
   };
@@ -410,38 +442,34 @@ const DevicesScreen = () => {
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Select Type</Text>
           {!selectedCategory ? (
-            <Text style={{ color: '#888', marginVertical: 16, textAlign: 'center' }}>
-              Please select a category first.
-            </Text>
+            <Text style={{ color: '#888', fontSize: 16, marginVertical: 16, textAlign: 'center' }}>Select a category first.</Text>
           ) : types.length === 0 ? (
-            <Text style={{ color: '#888', marginVertical: 16, textAlign: 'center' }}>
-              No types available for this category.
-            </Text>
-          ) : null}
-          <ScrollView>
-            <TouchableOpacity
-              style={styles.pickerItem}
-              onPress={() => {
-                setTypeFilter('');
-                setShowTypeModal(false);
-              }}
-              disabled={!selectedCategory || types.length === 0}
-            >
-              <Text style={[styles.pickerItemText, (!selectedCategory || types.length === 0) && { color: '#bbb' }]}>All</Text>
-            </TouchableOpacity>
-            {selectedCategory && types.length > 0 && types.map(type => (
+            <Text style={{ color: '#888', fontSize: 16, marginVertical: 16, textAlign: 'center' }}>No types available for this category.</Text>
+          ) : (
+            <ScrollView>
+              {types.map(type => (
+                <TouchableOpacity
+                  key={type.id}
+                  style={[styles.pickerItem, typeFilter === type.id && { backgroundColor: '#e3f2fd' }]}
+                  onPress={() => {
+                    setTypeFilter(type.id.toString());
+                    setShowTypeModal(false);
+                  }}
+                >
+                  <Text style={styles.pickerItemText}>{type.name}</Text>
+                </TouchableOpacity>
+              ))}
               <TouchableOpacity
-                key={type.id}
                 style={styles.pickerItem}
                 onPress={() => {
-                  setTypeFilter(type.id);
+                  setTypeFilter("");
                   setShowTypeModal(false);
                 }}
               >
-                <Text style={styles.pickerItemText}>{type.name}</Text>
+                <Text style={[styles.pickerItemText, { color: '#1976d2' }]}>Clear Type Filter</Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
+            </ScrollView>
+          )}
           <TouchableOpacity
             style={styles.modalCloseButton}
             onPress={() => setShowTypeModal(false)}
@@ -689,7 +717,7 @@ const renderEditModal = () => {
   );
 
   // Helper to get device type name robustly
-const getDeviceTypeName = (device) => {
+const getDeviceTypeName = (device: Device) => {
   // Try to find type in types array (current category)
   let typeId = device.device_type_id?.toString() || device.type?.id?.toString();
   let foundType = types.find(t => t.id?.toString() === typeId);
@@ -711,7 +739,7 @@ const getDeviceTypeName = (device) => {
 
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+    <View style={{ flex: 1, backgroundColor: '#f7f8fa' }}>
       <DebugUserRole />
       <TouchableOpacity
         style={styles.backButton}
@@ -725,10 +753,10 @@ const getDeviceTypeName = (device) => {
             } else if (userRole === 'user') {
               router.replace('/screens/userDashboard');
             } else {
-              router.replace('/(tabs)/index');
+              router.replace('/screens/userDashboard');
             }
           } catch {
-            router.replace('/(tabs)/index');
+            router.replace('/screens/userDashboard');
           }
         }}
         testID="back-btn"
@@ -744,266 +772,377 @@ const getDeviceTypeName = (device) => {
           <Ionicons name="add" size={22} color="#fff" />
         </TouchableOpacity>
       </View>
-      <View style={styles.filterRow}>
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => setShowCategoryModal(true)}
-        >
-          <Text style={styles.filterButtonText}>
-            {selectedCategory ? (categories.find(c => c.id === selectedCategory)?.name || 'Category') : 'Category'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => setShowTypeModal(true)}
-        >
-          <Text style={styles.filterButtonText}>
-            {typeFilter ? (types.find(t => t.id === typeFilter)?.name || 'Type') : 'Type'}
-          </Text>
-        </TouchableOpacity>
-        {(userRole === 'admin' || userRole === 'superadmin') && (
-          <TouchableOpacity
-            style={styles.filterButton}
-            onPress={() => setShowOfficeModal(true)}
-          >
-            <Ionicons name="business" size={18} color="#1976d2" style={{ marginRight: 6 }} />
-            <Text style={styles.filterButtonText} numberOfLines={1}>
-              {selectedOffice ? (offices.find(o => o.id?.toString() === selectedOffice?.toString())?.name || 'Office') : 'Office'}
-            </Text>
-            <Ionicons name="chevron-down" size={16} color="#1976d2" style={{ marginLeft: 2 }} />
-          </TouchableOpacity>
+      {renderFilterBar()}
+      <View style={styles.deviceGrid}>
+        {loading ? (
+          <ActivityIndicator size="large" color="#1976d2" style={{ marginTop: 48 }} />
+        ) : error ? (
+          <Text style={styles.emptyText}>{error}</Text>
+        ) : (
+          <FlatList
+            data={paginatedDevices}
+            keyExtractor={item => item.id?.toString() || Math.random().toString()}
+            renderItem={renderDeviceCard}
+            contentContainerStyle={{ paddingBottom: 32, paddingTop: 8, paddingHorizontal: 4 }}
+            numColumns={numColumns}
+            {...(numColumns > 1 ? { columnWrapperStyle: { justifyContent: 'space-between', marginBottom: 16 } } : {})}
+            ListEmptyComponent={<Text style={{ color: '#888', fontSize: 16, marginTop: 32, textAlign: 'center' }}>No devices found.</Text>}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            showsVerticalScrollIndicator={false}
+          />
         )}
+        {totalPages > 1 && (
+          <View style={styles.paginationRowMobile}>
             <TouchableOpacity
-              style={styles.filterButton}
-              onPress={() => setShowStatusModal(true)}
+              style={[styles.pageButtonMobile, currentPage === 1 && styles.disabledButtonMobile]}
+              onPress={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
             >
-              <Text style={styles.filterButtonText}>
-                {statusFilter ? (statusOptions.find(s => s.value === statusFilter)?.label || 'Status') : 'Status'}
-              </Text>
+              <Text style={styles.pageButtonTextMobile}>{'< Prev'}</Text>
+            </TouchableOpacity>
+            <Text style={styles.pageInfoMobile}>{`${currentPage} / ${totalPages}`}</Text>
+            <TouchableOpacity
+              style={[styles.pageButtonMobile, currentPage === totalPages && styles.disabledButtonMobile]}
+              onPress={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              <Text style={styles.pageButtonTextMobile}>{'Next >'}</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.deviceGrid}>
-            {loading ? (
-              <ActivityIndicator size="large" color="#1976d2" style={{ marginTop: 48 }} />
-            ) : error ? (
-              <Text style={styles.emptyText}>{error}</Text>
-            ) : (
-              <FlatList
-                data={paginatedDevices}
-                keyExtractor={item => item.id?.toString() || Math.random().toString()}
-                renderItem={renderDeviceCard}
-                contentContainerStyle={{ paddingBottom: 32 }}
-                numColumns={numColumns}
-                {...(numColumns > 1 ? { columnWrapperStyle: { justifyContent: 'space-between', marginBottom: 16 } } : {})}
-                ListEmptyComponent={<Text style={{ color: '#888', fontSize: 16, marginTop: 32, textAlign: 'center' }}>No devices found.</Text>}
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-              />
-            )}
-            {totalPages > 1 && (
-              <View style={styles.paginationRow}>
-                <Button
-                  title="Prev"
-                  onPress={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  color={currentPage === 1 ? '#ccc' : '#1976d2'}
-                />
-                <Text style={{ marginHorizontal: 12 }}>{currentPage} / {totalPages}</Text>
-                <Button
-                  title="Next"
-                  onPress={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  color={currentPage === totalPages ? '#ccc' : '#1976d2'}
-                />
-              </View>
-            )}
-          </View>
-          {renderDeviceModal()}
-          {renderCategoryModal()}
-          {renderTypeModal()}
-          {renderOfficeModal()}
-          {renderStatusModal()}
-          {renderEditModal()}
-        </View>
-      );
-    };
+        )}
+      </View>
+      {renderDeviceModal()}
+      {renderCategoryModal()}
+      {renderTypeModal()}
+      {renderOfficeModal()}
+      {renderStatusModal()}
+      {renderEditModal()}
+    </View>
+  );
+};
 
-    const styles = StyleSheet.create({
-      container: {
-        flex: 1,
-        backgroundColor: '#f7f8fa',
-        paddingTop: 24,
-        paddingHorizontal: 16,
-      },
-      backButton: {
-        position: 'absolute',
-        top: 40,
-        left: 16,
-        zIndex: 10,
-        backgroundColor: '#fff',
-        borderRadius: 24,
-        padding: 4,
-        shadowColor: '#000',
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-        elevation: 2,
-      },
-      title: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: '#1976d2',
-        marginTop: 48,
-        marginBottom: 12,
-        alignSelf: 'center',
-        letterSpacing: 0.5,
-      },
-      headerRow: {
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-        marginBottom: 12,
-        width: '100%',
-      },
-      addButton: {
-        backgroundColor: '#1976d2',
-        borderRadius: 8,
-        padding: 10,
-      },
-      filterRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 10,
-        width: '100%',
-      },
-      filterButton: {
-        flex: 1,
-        marginHorizontal: 3,
-        backgroundColor: '#fff',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#e0e0e0',
-        padding: 8,
-        alignItems: 'center',
-      },
-      filterButtonText: {
-        color: '#1976d2',
-        fontWeight: 'bold',
-        fontSize: 15,
-      },
-      deviceGrid: {
-        flex: 1,
-        width: '100%',
-        alignItems: 'center',
-        marginTop: 24,
-      },
-      deviceCard: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 18,
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
-        elevation: 2,
-        borderWidth: 1,
-        borderColor: '#e0e0e0',
-      },
-      deviceName: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#1976d2',
-        marginBottom: 2,
-      },
-      deviceType: {
-        fontSize: 14,
-        color: '#666',
-        marginBottom: 2,
-      },
-      deviceOffice: {
-        fontSize: 12,
-        color: '#888',
-        marginTop: 2,
-      },
-      deviceMeta: {
-        fontSize: 14,
-        color: '#555',
-        marginBottom: 1,
-      },
-      deviceStatus: {
-        fontSize: 13,
-        fontWeight: '600',
-        marginTop: 4,
-        textTransform: 'capitalize',
-      },
-      paginationRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 12,
-        marginBottom: 8,
-      },
-      emptyText: {
-        textAlign: 'center',
-        color: '#888',
-        fontSize: 18,
-        marginTop: 32,
-      },
-      modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-      },
-      modalContent: {
-        backgroundColor: '#fff',
-        borderRadius: 14,
-        padding: 22,
-        width: '90%',
-        maxHeight: '80%',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        elevation: 4,
-      },
-      modalTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#1976d2',
-        marginBottom: 8,
-      },
-      modalText: {
-        fontSize: 16,
-        color: '#333',
-        marginBottom: 8,
-      },
-      modalCloseButton: {
-        marginTop: 16,
-        backgroundColor: '#1976d2',
-        borderRadius: 8,
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        alignItems: 'center',
-      },
-      modalCloseButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 16,
-      },
-      pickerItem: {
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-      },
-      pickerItemText: {
-        fontSize: 16,
-        color: '#333',
-      },
-    });
-    
-    export default DevicesScreen;
-    
-    
-    
-    // Add onRefresh handler for FlatList
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f7f8fa',
+    paddingTop: 24,
+    paddingHorizontal: 8,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 16,
+    zIndex: 10,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#1976d2',
+    marginTop: 48,
+    marginBottom: 12,
+    alignSelf: 'center',
+    letterSpacing: 0.5,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: 12,
+    width: '100%',
+  },
+  addButton: {
+    backgroundColor: '#1976d2',
+    borderRadius: 8,
+    padding: 10,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    width: '100%',
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    marginHorizontal: 2,
+    minWidth: 70,
+    marginBottom: 2,
+  },
+  filterButtonMobile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    marginHorizontal: 2,
+    minWidth: 90,
+    marginBottom: 2,
+    marginTop: 2,
+    elevation: 1,
+  },
+  deviceGrid: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  deviceCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    marginHorizontal: 2,
+  },
+  deviceCardMobile: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.10,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    marginHorizontal: 2,
+  },
+  deviceImageMobile: {
+    width: '98%',
+    height: 160,
+    borderRadius: 14,
+    resizeMode: 'cover',
+    backgroundColor: '#f0f0f0',
+    marginBottom: 8,
+  },
+  statusBadge: {
+    marginLeft: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  statusBadgeText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
+    textTransform: 'capitalize',
+  },
+  deviceName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1976d2',
+    marginBottom: 2,
+  },
+  deviceNameMobile: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1976d2',
+    marginBottom: 2,
+    marginTop: 6,
+  },
+  deviceType: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 2,
+  },
+  deviceTypeMobile: {
+    fontSize: 15,
+    color: '#666',
+    marginBottom: 2,
+  },
+  deviceOffice: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 2,
+  },
+  deviceOfficeMobile: {
+    fontSize: 13,
+    color: '#888',
+    marginTop: 2,
+  },
+  deviceMeta: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 1,
+  },
+  deviceStatus: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 4,
+    textTransform: 'capitalize',
+  },
+  deviceStatusMobile: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 4,
+    textTransform: 'capitalize',
+  },
+  paginationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    marginBottom: 8,
+    gap: 8,
+  },
+  paginationRowMobile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    marginBottom: 8,
+    gap: 6,
+  },
+  pageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#1976d2',
+  },
+  pageButtonMobile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    marginHorizontal: 2,
+    borderWidth: 1,
+    borderColor: '#1976d2',
+  },
+  disabledButton: {
+    backgroundColor: '#f0f0f0',
+    borderColor: '#b0b0b0',
+  },
+  disabledButtonMobile: {
+    backgroundColor: '#f0f0f0',
+    borderColor: '#b0b0b0',
+  },
+  pageButtonText: {
+    color: '#1976d2',
+    fontWeight: 'bold',
+    fontSize: 15,
+    marginHorizontal: 2,
+  },
+  pageButtonTextMobile: {
+    color: '#1976d2',
+    fontWeight: 'bold',
+    fontSize: 15,
+    marginHorizontal: 2,
+  },
+  pageInfo: {
+    fontSize: 16,
+    marginHorizontal: 8,
+    color: '#222',
+    fontWeight: '600',
+  },
+  pageInfoMobile: {
+    fontSize: 16,
+    marginHorizontal: 8,
+    color: '#222',
+    fontWeight: '600',
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#888',
+    fontSize: 18,
+    marginTop: 32,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 22,
+    width: '92%',
+    maxHeight: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1976d2',
+    marginBottom: 8,
+    marginTop: 8,
+  },
+  modalText: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 8,
+  },
+  modalCloseButton: {
+    marginTop: 16,
+    backgroundColor: '#1976d2',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  modalCloseButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  pickerItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  pickerItemText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  editBtn: {
+    backgroundColor: '#1976d2',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  editBtnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+});
+
+export default DevicesScreen;
 

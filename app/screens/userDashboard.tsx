@@ -48,7 +48,7 @@ const UserDashboard = () => {
           <Text style={[styles.profileName, { fontSize: 22, fontWeight: 'bold', color: colors.primaryDark, marginBottom: 4, letterSpacing: 0.2 }]}>{user.name}</Text>
           <Text style={[styles.profileEmail, { fontSize: 16, color: colors.textSecondary, marginBottom: 2 }]}>{user.email}</Text>
         </Card>
-        <View style={styles.widgetCol}>
+        <View style={styles.widgetGrid}>
           <Card onPress={() => handleCardPress('/(tabs)/devices')} style={styles.widget}><Text style={styles.widgetTitle}>Devices</Text></Card>
           <Card onPress={() => handleCardPress('/(tabs)/reports')} style={styles.widget}><Text style={styles.widgetTitle}>Reports</Text></Card>
           <Card onPress={() => handleCardPress('/(tabs)/profile')} style={styles.widget}><Text style={styles.widgetTitle}>Profile</Text></Card>
@@ -148,29 +148,26 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 2,
   },
-  widgetCol: {
+  widgetGrid: {
     width: '100%',
-    flexDirection: 'column',
-    gap: 16,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     marginBottom: 12,
   },
   widget: {
-    flex: 1,
+    flexBasis: '48%',
+    maxWidth: '48%',
+    marginBottom: 16,
     alignItems: 'center',
     paddingVertical: 24,
     borderRadius: 18,
-    marginVertical: 4,
     backgroundColor: '#e3e7fa',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.07,
     shadowRadius: 4,
     elevation: 2,
-    ...Platform.select({
-      android: {
-        borderless: false,
-      },
-    }),
   },
   widgetTitle: {
     fontSize: 18,

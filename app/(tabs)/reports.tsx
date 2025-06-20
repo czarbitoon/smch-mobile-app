@@ -1,25 +1,31 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, Button, Alert, FlatList, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
-import { useRouter } from 'expo-router';
-import { RefreshControl } from 'react-native';
-import axios from 'axios';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, FlatList, TouchableOpacity, RefreshControl, Modal, Button, Alert, Dimensions, Platform, ScrollView } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
-import { Modal, ScrollView } from 'react-native';
 import useUserRole from '../utils/useUserRole';
+import axios from 'axios';
 import { API_URL } from "../../utils/api";
+
+// Add Report type for type safety
+type Report = {
+  id: number;
+  title: string;
+  description: string;
+  status: string;
+  created_at: string;
+  resolved_by?: string;
+};
 
 const ReportsScreen = () => {
   const router = useRouter();
   const userRole = useUserRole();
-  const [reports, setReports] = useState([]);
+  const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedReport, setSelectedReport] = useState(null);
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [statusValue, setStatusValue] = useState("");
@@ -27,20 +33,23 @@ const ReportsScreen = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [orderByCreated, setOrderByCreated] = useState('latest');
-  const pageSize = 15;
+  const pageSize = 10;
+
+  const windowWidth = Dimensions.get('window').width;
+  const isSmallScreen = windowWidth < 600;
 
   const fetchReports = async () => {
     setLoading(true);
     setError("");
     try {
       const token = await AsyncStorage.getItem('token');
-      const params = {};
+      const params: any = {};
       params.order_by_created = orderByCreated;
       const response = await axios.get(`${API_URL}/reports`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         params
       });
-      let reportsArr = [];
+      let reportsArr: Report[] = [];
       if (response.data && response.data.data && Array.isArray(response.data.data.reports)) {
         reportsArr = response.data.data.reports;
       } else if (response.data && Array.isArray(response.data.data)) {
@@ -49,7 +58,7 @@ const ReportsScreen = () => {
         reportsArr = response.data;
       }
       setReports(reportsArr);
-    } catch (err) {
+    } catch (err: any) {
       setReports([]);
       setError(err?.response?.data?.message || 'Failed to fetch reports');
     } finally {
@@ -73,7 +82,7 @@ const ReportsScreen = () => {
     fetchReports();
   };
 
-  const fetchReportDetail = async (id) => {
+  const fetchReportDetail = async (id: number) => {
     setDetailLoading(true);
     setDetailError("");
     try {
@@ -81,10 +90,11 @@ const ReportsScreen = () => {
       const response = await axios.get(`${API_URL}/reports/${id}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
-      setSelectedReport(response.data?.data || response.data);
-      setStatusValue(response.data?.data?.status || response.data?.status || "");
+      const report: Report = response.data?.data || response.data;
+      setSelectedReport(report);
+      setStatusValue(report.status || "");
       setModalVisible(true);
-    } catch (err) {
+    } catch (err: any) {
       setDetailError(err?.response?.data?.message || 'Failed to fetch report details');
       setSelectedReport(null);
     } finally {
@@ -92,7 +102,7 @@ const ReportsScreen = () => {
     }
   };
 
-  const handleReportPress = (report) => {
+  const handleReportPress = (report: Report) => {
     fetchReportDetail(report.id);
   };
 
@@ -107,7 +117,7 @@ const ReportsScreen = () => {
       fetchReports();
       setModalVisible(false);
       Alert.alert('Success', 'Report resolved successfully');
-    } catch (err) {
+    } catch (err: any) {
       setDetailError(err?.response?.data?.message || 'Failed to resolve report');
     } finally {
       setDetailLoading(false);
@@ -128,7 +138,7 @@ const ReportsScreen = () => {
       fetchReports();
       setModalVisible(false);
       Alert.alert('Success', 'Status updated successfully');
-    } catch (err) {
+    } catch (err: any) {
       setDetailError(err?.response?.data?.message || 'Failed to update status');
     } finally {
       setDetailLoading(false);
@@ -138,12 +148,12 @@ const ReportsScreen = () => {
   const filteredReports = React.useMemo(() => {
     let filtered = reports;
     if (statusFilter) {
-      filtered = filtered.filter(r => (r.status || '').toLowerCase() === statusFilter.toLowerCase());
+      filtered = filtered.filter((r) => (r.status || '').toLowerCase() === statusFilter.toLowerCase());
     }
     return [...filtered].sort((a, b) => 
       filterType === "oldest" 
-        ? new Date(a.created_at) - new Date(b.created_at)
-        : new Date(b.created_at) - new Date(a.created_at)
+        ? new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        : new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
   }, [reports, filterType, statusFilter]);
 
@@ -152,7 +162,7 @@ const ReportsScreen = () => {
     return filteredReports.slice(start, start + pageSize);
   }, [filteredReports, currentPage]);
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch ((status || '').toLowerCase()) {
       case 'resolved':
         return '#388e3c'; // green
@@ -174,108 +184,42 @@ const ReportsScreen = () => {
       transparent={true}
       onRequestClose={() => setModalVisible(false)}
     >
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}>
-        <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '90%', maxHeight: '90%' }}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setModalVisible(false)}>
+            <Ionicons name="close" size={28} color="#1976d2" />
+          </TouchableOpacity>
           {selectedReport ? (
-            <ScrollView>
-              <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 8, color: '#1976d2' }}>{selectedReport.title}</Text>
-              <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>
-                Status: <Text style={{ fontWeight: 'normal', color: getStatusColor(selectedReport.status) }}>
-                  {selectedReport.status || (selectedReport.resolved_by ? 'Resolved' : 'Pending')}
-                </Text>
-              </Text>
-              <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>Description:</Text>
-              <Text style={{ color: '#444', fontSize: 15, marginBottom: 8 }}>{selectedReport.description}</Text>
-              {selectedReport.device && (
-                <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>
-                  Device: <Text style={{ fontWeight: 'normal', color: '#333' }}>
-                    {selectedReport.device.name || selectedReport.device_id}
-                  </Text>
-                </Text>
-              )}
-              {selectedReport.office && (
-                <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>
-                  Office: <Text style={{ fontWeight: 'normal', color: '#333' }}>
-                    {selectedReport.office.name || selectedReport.office_id}
-                  </Text>
-                </Text>
-              )}
-              {selectedReport.image_url && (
-                <View style={{ marginTop: 12 }}>
-                  <Text style={{ fontWeight: 'bold', fontSize: 16 }}>Image:</Text>
-                  <View style={{ alignItems: 'center', marginTop: 4 }}>
-                    <Image source={{ uri: selectedReport.image_url }} style={{ width: 220, height: 180, borderRadius: 8 }} resizeMode="cover" />
-                  </View>
-                </View>
-              )}
-              {selectedReport.created_at && (
-                <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>
-                  Created: <Text style={{ fontWeight: 'normal', color: '#333' }}>
-                    {new Date(selectedReport.created_at).toLocaleString()}
-                  </Text>
-                </Text>
-              )}
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalTitle}>{selectedReport.title}</Text>
+              <Text style={[styles.modalStatus, { color: getStatusColor(selectedReport.status) }]}>{selectedReport.status || 'Unknown'}</Text>
+              <Text style={styles.modalDesc}>{selectedReport.description}</Text>
+              <Text style={styles.modalMeta}>Created: {selectedReport.created_at ? new Date(selectedReport.created_at).toLocaleString() : '-'}</Text>
               {selectedReport.resolved_by && (
-                <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>
-                  Resolved By: <Text style={{ fontWeight: 'normal', color: '#333' }}>
-                    {selectedReport.resolved_by_user?.name || selectedReport.resolved_by_user?.email || selectedReport.resolved_by || 'Unknown'}
-                  </Text>
-                </Text>
+                <Text style={styles.modalMeta}>Resolved by: {selectedReport.resolved_by}</Text>
               )}
-              {selectedReport.resolution_notes && (
-                <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 8 }}>
-                  Resolution Notes: <Text style={{ fontWeight: 'normal', color: '#333' }}>
-                    {selectedReport.resolution_notes}
-                  </Text>
-                </Text>
-              )}
-              {['admin', 'superadmin'].includes(userRole) && (
-                <View style={{ marginTop: 24 }}>
-                  <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>Update Status:</Text>
-                  <View style={{ borderWidth: 1, borderColor: '#bbb', borderRadius: 8, marginBottom: 12 }}>
-                    <Picker
-                      selectedValue={statusValue}
-                      onValueChange={setStatusValue}
-                      style={{ height: 44 }}
-                    >
-                      <Picker.Item label="Pending" value="pending" />
-                      <Picker.Item label="Resolved" value="resolved" />
-                      <Picker.Item label="Repair" value="repair" />
-                      <Picker.Item label="Decommissioned" value="decommissioned" />
-                    </Picker>
-                  </View>
-                  <Button
-                    title={detailLoading ? 'Updating...' : 'Update Status'}
-                    color="#1976d2"
-                    onPress={handleUpdateStatus}
-                    disabled={detailLoading || !statusValue || statusValue === selectedReport.status}
-                  />
-                </View>
-              )}
-              <View style={{ marginTop: 24, width: '100%' }}>
-                <Button title="Close" color="#757575" onPress={() => setModalVisible(false)} />
+              {detailError ? <Text style={{ color: 'red', marginTop: 8 }}>{detailError}</Text> : null}
+              {detailLoading ? <ActivityIndicator size="small" color="#1976d2" style={{ marginTop: 8 }} /> : null}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 18 }}>
+                <Button title="Close" color="#888" onPress={() => setModalVisible(false)} />
+                {userRole === 'admin' || userRole === 'superadmin' ? (
+                  <Button title="Resolve" color="#388e3c" onPress={handleResolve} disabled={detailLoading || selectedReport.status === 'resolved'} />
+                ) : null}
               </View>
             </ScrollView>
-          ) : null}
-          {detailError ? (
-            <Text style={{ color: 'red', marginTop: 8, textAlign: 'center' }}>{detailError}</Text>
           ) : null}
         </View>
       </View>
     </Modal>
   );
 
-  const renderReportItem = ({ item }) => (
+  const renderReportItem = ({ item }: { item: Report }) => (
     <TouchableOpacity
       style={[
         styles.reportCard,
         {
           borderColor: getStatusColor(item.status),
-          borderWidth: 2,
-          backgroundColor: '#f9f9f9',
-          margin: 4,
-          flex: 1,
-          minWidth: 0,
+          backgroundColor: '#fff',
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.08,
@@ -286,19 +230,11 @@ const ReportsScreen = () => {
       onPress={() => handleReportPress(item)}
       activeOpacity={0.85}
     >
-      <Text style={styles.reportTitle}>{item.title}</Text>
-      <Text style={[
-        styles.reportStatus,
-        {
-          color: getStatusColor(item.status),
-          fontWeight: 'bold',
-          marginBottom: 4,
-          textTransform: 'capitalize',
-        },
-      ]}>
-        {item.status || (item.resolved_by ? 'Resolved' : 'Pending')}
+      <Text style={styles.reportTitle} numberOfLines={2}>{item.title}</Text>
+      <Text style={styles.reportStatus} numberOfLines={1}>
+        <Ionicons name="ellipse" size={12} color={getStatusColor(item.status)} /> {item.status || (item.resolved_by ? 'Resolved' : 'Pending')}
       </Text>
-      <Text numberOfLines={2} style={styles.reportDesc}>{item.description}</Text>
+      <Text numberOfLines={3} style={styles.reportDesc}>{item.description}</Text>
     </TouchableOpacity>
   );
 
@@ -307,10 +243,18 @@ const ReportsScreen = () => {
     { label: 'Earliest', value: 'earliest' },
   ];
 
+  const statusOptions = [
+    { label: 'All', value: '' },
+    { label: 'Resolved', value: 'resolved' },
+    { label: 'Pending', value: 'pending' },
+    { label: 'Under Repair', value: 'repair' },
+    { label: 'Decommissioned', value: 'decommissioned' },
+  ];
+
   return (
     <View style={styles.container}>
       <TouchableOpacity
-        style={{ position: 'absolute', top: 40, left: 16, zIndex: 10 }}
+        style={styles.backButton}
         onPress={() => {
           if (userRole === 'admin' || userRole === 'superadmin') {
             router.replace('/screens/adminDashboard');
@@ -319,7 +263,7 @@ const ReportsScreen = () => {
           } else if (userRole === 'user') {
             router.replace('/screens/userDashboard');
           } else {
-            router.replace('/(tabs)/index');
+            router.replace('/screens/userDashboard');
           }
         }}
         testID="back-btn"
@@ -327,66 +271,67 @@ const ReportsScreen = () => {
         <Ionicons name="arrow-back" size={28} color="#1976d2" />
       </TouchableOpacity>
       <Text style={styles.title}>Reports</Text>
+      <View style={styles.filterRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 8 }}>
+          {statusOptions.map(opt => (
+            <TouchableOpacity
+              key={opt.value}
+              style={[styles.filterButton, statusFilter === opt.value && styles.filterButtonActive]}
+              onPress={() => { setStatusFilter(opt.value); setCurrentPage(1); }}
+            >
+              <Text style={[styles.filterButtonText, statusFilter === opt.value && { color: '#fff' }]}>{opt.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 8, marginLeft: 8 }}>
+          {sortOptions.map(opt => (
+            <TouchableOpacity
+              key={opt.value}
+              style={[styles.filterButton, filterType === opt.value && styles.filterButtonActive]}
+              onPress={() => { setFilterType(opt.value); setOrderByCreated(opt.value); setCurrentPage(1); }}
+            >
+              <Text style={[styles.filterButtonText, filterType === opt.value && { color: '#fff' }]}>{opt.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
       {error ? (
         <Text style={{ color: 'red', marginTop: 16, marginBottom: 8, textAlign: 'center' }}>{error}</Text>
       ) : null}
       {loading ? (
-        <ActivityIndicator size="large" color="#1976d2" />
+        <ActivityIndicator size="large" color="#1976d2" style={{ marginTop: 32 }} />
       ) : (
-        <>
-          <FlatList
-            data={paginatedReports}
-            keyExtractor={item => item.id?.toString() || Math.random().toString()}
-            renderItem={renderReportItem}
-            contentContainerStyle={{ paddingBottom: 32 }}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-            ListEmptyComponent={<Text style={{ color: '#888', fontSize: 16, marginTop: 32, textAlign: 'center' }}>No reports found.</Text>}
-            numColumns={3}
-            columnWrapperStyle={{ justifyContent: 'space-between', marginBottom: 16 }}
-          />
-          <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>
-            <Text style={{ marginRight: 8, fontWeight: 'bold' }}>Sort:</Text>
-            <Picker
-              selectedValue={orderByCreated}
-              style={{ width: 140, height: 36 }}
-              onValueChange={setOrderByCreated}
-              mode="dropdown"
-            >
-              {sortOptions.map(opt => (
-                <Picker.Item key={opt.value} label={opt.label} value={opt.value} />
-              ))}
-            </Picker>
-            <Text style={{ marginLeft: 16, marginRight: 8, fontWeight: 'bold' }}>Status:</Text>
-            <Picker
-              selectedValue={statusFilter}
-              style={{ width: 150, height: 36 }}
-              onValueChange={setStatusFilter}
-              mode="dropdown"
-            >
-              <Picker.Item label="All" value="" />
-              <Picker.Item label="Pending" value="pending" />
-              <Picker.Item label="Resolved" value="resolved" />
-              <Picker.Item label="Repair" value="repair" />
-              <Picker.Item label="Decommissioned" value="decommissioned" />
-            </Picker>
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8 }}>
-            <Button
-              title="Prev"
-              onPress={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-            />
-            <Text style={{ marginHorizontal: 16 }}>
-              Page {currentPage} / {Math.max(1, Math.ceil(filteredReports.length / pageSize))}
-            </Text>
-            <Button
-              title="Next"
-              onPress={() => setCurrentPage(p => p < Math.ceil(filteredReports.length / pageSize) ? p + 1 : p)}
-              disabled={currentPage >= Math.ceil(filteredReports.length / pageSize)}
-            />
-          </View>
-        </>
+        <FlatList
+          data={paginatedReports}
+          keyExtractor={item => item.id?.toString() || Math.random().toString()}
+          renderItem={renderReportItem}
+          contentContainerStyle={styles.listContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          ListEmptyComponent={<Text style={styles.emptyText}>No reports found.</Text>}
+          numColumns={isSmallScreen ? 1 : 2}
+          columnWrapperStyle={isSmallScreen ? undefined : { justifyContent: 'space-between', marginBottom: 16 }}
+          showsVerticalScrollIndicator={false}
+        />
       )}
+      <View style={styles.paginationRow}>
+        <TouchableOpacity
+          style={[styles.pageButton, currentPage === 1 && styles.disabledButton]}
+          onPress={() => setCurrentPage(p => Math.max(1, p - 1))}
+          disabled={currentPage === 1}
+        >
+          <Ionicons name="chevron-back" size={20} color={currentPage === 1 ? '#b0b0b0' : '#1976d2'} />
+          <Text style={[styles.pageButtonText, currentPage === 1 && { color: '#b0b0b0' }]}>Prev</Text>
+        </TouchableOpacity>
+        <Text style={styles.pageInfo}>{`Page ${currentPage} of ${Math.max(1, Math.ceil(filteredReports.length / pageSize))}`}</Text>
+        <TouchableOpacity
+          style={[styles.pageButton, currentPage >= Math.ceil(filteredReports.length / pageSize) && styles.disabledButton]}
+          onPress={() => setCurrentPage(p => p < Math.ceil(filteredReports.length / pageSize) ? p + 1 : p)}
+          disabled={currentPage >= Math.ceil(filteredReports.length / pageSize)}
+        >
+          <Text style={[styles.pageButtonText, currentPage >= Math.ceil(filteredReports.length / pageSize) && { color: '#b0b0b0' }]}>Next</Text>
+          <Ionicons name="chevron-forward" size={20} color={currentPage >= Math.ceil(filteredReports.length / pageSize) ? '#b0b0b0' : '#1976d2'} />
+        </TouchableOpacity>
+      </View>
       {renderReportModal()}
     </View>
   );
@@ -399,25 +344,74 @@ const styles = StyleSheet.create({
     paddingTop: 64,
     paddingHorizontal: 8,
   },
+  backButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 48 : 24,
+    left: 16,
+    zIndex: 10,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
     color: '#222',
+    marginTop: 8,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    marginTop: 8,
+    gap: 8,
+    width: '100%',
+    justifyContent: 'space-between',
+  },
+  filterButton: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    marginHorizontal: 2,
+    alignItems: 'center',
+    minWidth: 70,
+  },
+  filterButtonActive: {
+    backgroundColor: '#1976d2',
+    borderColor: '#1976d2',
+  },
+  filterButtonText: {
+    color: '#1976d2',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  listContent: {
+    paddingBottom: 32,
+    paddingTop: 8,
+    paddingHorizontal: 4,
   },
   reportCard: {
     borderRadius: 14,
-    padding: 14,
-    marginBottom: 8,
+    padding: 18,
+    marginBottom: 14,
     alignItems: 'flex-start',
     justifyContent: 'flex-start',
     minHeight: 110,
-    flexBasis: '32%',
-    maxWidth: '32%',
+    flex: 1,
+    marginHorizontal: 4,
+    maxWidth: '100%',
   },
   reportTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: 'bold',
     marginBottom: 4,
     color: '#222',
@@ -425,11 +419,107 @@ const styles = StyleSheet.create({
   reportStatus: {
     fontSize: 14,
     marginBottom: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    fontWeight: '600',
+    textTransform: 'capitalize',
   },
   reportDesc: {
     fontSize: 13,
     color: '#444',
     marginTop: 2,
+  },
+  emptyText: {
+    color: '#888',
+    fontSize: 16,
+    marginTop: 32,
+    textAlign: 'center',
+  },
+  paginationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 8,
+    gap: 8,
+  },
+  pageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#1976d2',
+  },
+  disabledButton: {
+    backgroundColor: '#f0f0f0',
+    borderColor: '#b0b0b0',
+  },
+  pageButtonText: {
+    color: '#1976d2',
+    fontWeight: 'bold',
+    fontSize: 15,
+    marginHorizontal: 2,
+  },
+  pageInfo: {
+    fontSize: 16,
+    marginHorizontal: 8,
+    color: '#222',
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '92%',
+    maxHeight: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+    position: 'relative',
+  },
+  modalCloseBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 10,
+    backgroundColor: '#f4f6fa',
+    borderRadius: 20,
+    padding: 2,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#1976d2',
+    marginBottom: 8,
+    marginTop: 16,
+  },
+  modalStatus: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 8,
+    textTransform: 'capitalize',
+  },
+  modalDesc: {
+    fontSize: 15,
+    color: '#333',
+    marginBottom: 8,
+  },
+  modalMeta: {
+    fontSize: 13,
+    color: '#888',
+    marginBottom: 2,
   },
 });
 
