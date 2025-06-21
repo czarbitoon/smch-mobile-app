@@ -63,22 +63,23 @@ const useFetchWithToken = <T = any>(fetchFn: (token: string) => Promise<T>, deps
       try {
         const token = await AsyncStorage.getItem('token');
         if (!token) {
-          setError('Unauthorized. Please login again.');
+          // No token: do not show error, just redirect
+          if (isMounted) setLoading(false);
           router.replace('/auth/login');
-          setLoading(false);
           return;
         }
         const result = await fetchFn(token);
         if (isMounted) setData(result);
       } catch (e: any) {
         if (e?.response?.status === 401) {
-          setError('Session expired. Please login again.');
+          // Token expired: do not show error, just redirect
           await AsyncStorage.removeItem('token');
+          if (isMounted) setLoading(false);
           router.replace('/auth/login');
         } else {
           setError('Failed to fetch data');
+          if (isMounted) setData([] as unknown as T);
         }
-        if (isMounted) setData([] as unknown as T);
       } finally {
         if (isMounted) setLoading(false);
       }

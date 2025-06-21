@@ -4,6 +4,7 @@ import { API_URL } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js/react-native';
+import Toast from 'react-native-toast-message';
 
 // Define notification type for better type safety
 interface Notification {
@@ -20,11 +21,13 @@ const NotificationContext = createContext<{
   unreadCount: number;
   markAllAsRead: () => void;
   fetchNotifications: () => void;
+  showNotification: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
 }>({
   notifications: [],
   unreadCount: 0,
   markAllAsRead: () => {},
   fetchNotifications: () => {},
+  showNotification: () => {},
 });
 
 export const NotificationProvider = ({ children }: { children: React.ReactNode }) => {
@@ -67,6 +70,26 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     })();
   }, []);
 
+  // Show a toast/snackbar notification
+  const showNotification = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+    if (typeof window !== 'undefined' && window.document) {
+      // Web: use react-toastify if available
+      if ((window as any).toast) {
+        (window as any).toast(message, { type });
+      } else {
+        alert(message); // fallback
+      }
+    } else {
+      // Mobile: use react-native-toast-message
+      Toast.show({
+        type,
+        text1: message,
+        position: 'top',
+        visibilityTime: 3000,
+      });
+    }
+  };
+
   // Listen for real-time notifications (Echo/Pusher)
   useEffect(() => {
     fetchNotifications();
@@ -99,6 +122,8 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
           .notification((notification: Notification) => {
             setNotifications(prev => [notification, ...prev]);
             setUnreadCount(count => count + 1);
+            // Show toast for new notification
+            showNotification(notification.message || notification.data?.message || 'New notification', 'info');
           });
       }
     })();
@@ -111,8 +136,10 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
   }, [userId, fetchNotifications]);
 
   return (
-    <NotificationContext.Provider value={{ notifications, unreadCount, markAllAsRead, fetchNotifications }}>
+    <NotificationContext.Provider value={{ notifications, unreadCount, markAllAsRead, fetchNotifications, showNotification }}>
       {children}
+      {/* Toast container for mobile */}
+      <Toast ref={(ref) => Toast.setRef?.(ref)} />
     </NotificationContext.Provider>
   );
 };
