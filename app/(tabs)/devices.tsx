@@ -552,7 +552,7 @@ const DevicesScreen = () => {
               <Text style={{ fontSize: 16, color: '#555', marginBottom: 8 }}>Office: {selectedDevice.office?.name || 'Unknown'}</Text>
               <Text style={{ fontSize: 15, color: '#888', marginBottom: 8 }}>ID: {selectedDevice.id}</Text>
               <Text style={{ fontSize: 15, color: '#888', marginBottom: 8 }}>Description: {selectedDevice.description || 'No description.'}</Text>
-              <TouchableOpacity style={[styles.editBtn, { marginTop: 12 }]} onPress={() => { setShowDeviceModal(false); navigation.navigate('ReportCreate', { device: selectedDevice }); }}>
+              <TouchableOpacity style={[styles.editBtn, { marginTop: 12 }]} onPress={() => { setShowDeviceModal(false); router.push({ pathname: '/reportCreate', params: { deviceId: selectedDevice.id, deviceName: selectedDevice.name } }); }}>
   <Text style={styles.editBtnText}>Report Device</Text>
 </TouchableOpacity>
 {userRole === 'admin' || userRole === 'superadmin' ? (
